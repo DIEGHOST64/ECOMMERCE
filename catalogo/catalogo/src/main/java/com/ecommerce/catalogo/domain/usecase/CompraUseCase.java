@@ -4,15 +4,14 @@ import com.ecommerce.catalogo.domain.exception.CarritoVacioException;
 import com.ecommerce.catalogo.domain.exception.UsuarioNoEncontradoException;
 import com.ecommerce.catalogo.domain.model.Carrito;
 import com.ecommerce.catalogo.domain.model.Compra;
-import com.ecommerce.catalogo.domain.model.ItemCarrito;
+import com.ecommerce.catalogo.domain.model.MensajeNotificacion;
+import com.ecommerce.catalogo.domain.model.NotificacionEmail;
+import com.ecommerce.catalogo.domain.model.NotificacionSMS;
 import com.ecommerce.catalogo.domain.model.Usuario;
 import com.ecommerce.catalogo.domain.model.gateway.CarritoGateway;
 import com.ecommerce.catalogo.domain.model.gateway.CompraGateway;
+import com.ecommerce.catalogo.domain.model.gateway.NotificacionGateway;
 import com.ecommerce.catalogo.domain.model.gateway.UsuarioGateway;
-import com.ecommerce.catalogo.infraestructure.message_broker.MensajeCola;
-import com.ecommerce.catalogo.infraestructure.message_broker.NotificacionEmail;
-import com.ecommerce.catalogo.infraestructure.message_broker.NotificacionSMS;
-import com.ecommerce.catalogo.infraestructure.message_broker.SqsProducer;
 import lombok.RequiredArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -27,7 +26,7 @@ public class CompraUseCase {
     private final CarritoGateway carritoGateway;
     private final CarritoUseCase carritoUseCase;
     private final UsuarioGateway usuarioGateway;
-    private final SqsProducer sqsProducer;
+    private final NotificacionGateway notificacionGateway;
 
     public Compra realizarCompra(Long usuarioId) {
         // Validar que el usuario existe
@@ -96,13 +95,13 @@ public class CompraUseCase {
                         .build();
             }
             
-            MensajeCola mensaje = MensajeCola.builder()
-                    .tipo(sms != null ? MensajeCola.TipoNotificacion.AMBOS : MensajeCola.TipoNotificacion.EMAIL)
+            MensajeNotificacion mensaje = MensajeNotificacion.builder()
+                    .tipo(sms != null ? MensajeNotificacion.TipoNotificacion.AMBOS : MensajeNotificacion.TipoNotificacion.EMAIL)
                     .email(email)
                     .sms(sms)
                     .build();
             
-            sqsProducer.enviarMensaje(mensaje);
+            notificacionGateway.enviarNotificacion(mensaje);
         } catch (Exception e) {
             // Log pero no fallar la compra si la notificación falla
             System.err.println("Error enviando notificación de compra: " + e.getMessage());

@@ -1,12 +1,12 @@
 package com.ecommerce.auth.domain.usecase;
 
+import com.ecommerce.auth.domain.model.MensajeNotificacion;
+import com.ecommerce.auth.domain.model.NotificacionEmail;
+import com.ecommerce.auth.domain.model.NotificacionSMS;
 import com.ecommerce.auth.domain.model.Usuario;
 import com.ecommerce.auth.domain.model.gateway.EncrypterGateway;
+import com.ecommerce.auth.domain.model.gateway.NotificacionGateway;
 import com.ecommerce.auth.domain.model.gateway.UsuarioGateway;
-import com.ecommerce.auth.infraestructura.message_broker.MensajeCola;
-import com.ecommerce.auth.infraestructura.message_broker.NotificacionEmail;
-import com.ecommerce.auth.infraestructura.message_broker.NotificacionSMS;
-import com.ecommerce.auth.infraestructura.message_broker.SqsProducer;
 import lombok.RequiredArgsConstructor;
 
 @RequiredArgsConstructor
@@ -14,7 +14,7 @@ public class UsuarioUseCase {
 
     private final UsuarioGateway usuarioGateway;
     private final EncrypterGateway encrypterGateway;
-    private final SqsProducer sqsProducer;
+    private final NotificacionGateway notificacionGateway;
 
     public Usuario guardarUsuario(Usuario usuario) {
         if (usuario.getEmail() == null || usuario.getPassword() == null) {
@@ -49,13 +49,13 @@ public class UsuarioUseCase {
                         .build();
             }
             
-            MensajeCola mensaje = MensajeCola.builder()
-                    .tipo(sms != null ? MensajeCola.TipoNotificacion.AMBOS : MensajeCola.TipoNotificacion.EMAIL)
+            MensajeNotificacion mensaje = MensajeNotificacion.builder()
+                    .tipo(sms != null ? MensajeNotificacion.TipoNotificacion.AMBOS : MensajeNotificacion.TipoNotificacion.EMAIL)
                     .email(email)
                     .sms(sms)
                     .build();
             
-            sqsProducer.enviarMensaje(mensaje);
+            notificacionGateway.enviarNotificacion(mensaje);
         } catch (Exception e) {
             // Log pero no fallar el registro si la notificación falla
             System.err.println("Error enviando notificación de bienvenida: " + e.getMessage());

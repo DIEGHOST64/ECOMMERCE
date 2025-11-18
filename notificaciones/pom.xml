@@ -16,7 +16,7 @@
     <artifactId>notificaciones</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>notificaciones</name>
-    <description>Microservicio de notificaciones con AWS SES, SNS y SQS</description>
+    <description>Microservicio de notificaciones con AWS SES (Email), SQS (Cola) y Twilio (SMS)</description>
     
     <properties>
         <java.version>17</java.version>
@@ -53,14 +53,7 @@
             <version>${aws.sdk.version}</version>
         </dependency>
         
-        <!-- AWS SNS -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sns</artifactId>
-            <version>${aws.sdk.version}</version>
-        </dependency>
-        
-        <!-- Twilio SMS -->
+        <!-- Twilio SMS (reemplaza AWS SNS) -->
         <dependency>
             <groupId>com.twilio.sdk</groupId>
             <artifactId>twilio</artifactId>

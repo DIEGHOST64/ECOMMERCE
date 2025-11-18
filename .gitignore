@@ -54,3 +54,9 @@ build/
 # Logs
 logs/
 *.log.*
+
+# Scripts locales y documentación interna
+start-services.ps1
+stop-services.ps1
+logs.ps1
+FRONTEND_RECOMMENDATION.md

@@ -2,12 +2,12 @@ package com.ecommerce.catalogo.application.config;
 
 import com.ecommerce.catalogo.domain.model.gateway.CarritoGateway;
 import com.ecommerce.catalogo.domain.model.gateway.CompraGateway;
+import com.ecommerce.catalogo.domain.model.gateway.NotificacionGateway;
 import com.ecommerce.catalogo.domain.model.gateway.ProductoGateway;
 import com.ecommerce.catalogo.domain.model.gateway.UsuarioGateway;
 import com.ecommerce.catalogo.domain.usecase.CarritoUseCase;
 import com.ecommerce.catalogo.domain.usecase.CompraUseCase;
 import com.ecommerce.catalogo.domain.usecase.ProductoUseCase;
-import com.ecommerce.catalogo.infraestructure.message_broker.SqsProducer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -31,7 +31,7 @@ public class UseCaseConfig {
                                       CarritoGateway carritoGateway,
                                       CarritoUseCase carritoUseCase,
                                       UsuarioGateway usuarioGateway,
-                                      SqsProducer sqsProducer) {
-        return new CompraUseCase(compraGateway, carritoGateway, carritoUseCase, usuarioGateway, sqsProducer);
+                                      NotificacionGateway notificacionGateway) {
+        return new CompraUseCase(compraGateway, carritoGateway, carritoUseCase, usuarioGateway, notificacionGateway);
     }
 }
