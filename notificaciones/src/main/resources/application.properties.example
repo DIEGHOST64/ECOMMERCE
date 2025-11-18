@@ -1,0 +1,17 @@
+spring.application.name=notificaciones
+server.port=9093
+
+# AWS Configuration
+aws.region=us-east-1
+aws.ses.senderEmail=kratexvertex90@gmail.com
+
+# AWS SNS Configuration (disabled - using Twilio instead)
+aws.sns.enabled=false
+
+# Twilio Configuration
+twilio.accountSid=YOUR_TWILIO_ACCOUNT_SID
+twilio.authToken=YOUR_TWILIO_AUTH_TOKEN
+twilio.phoneNumber=YOUR_TWILIO_PHONE_NUMBER
+
+# Scheduling
+spring.task.scheduling.pool.size=2
