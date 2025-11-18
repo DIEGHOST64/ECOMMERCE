@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 
 @Entity
 @Table(name = "item_carrito")
@@ -19,9 +20,9 @@ public class ItemCarritoData {
 
     private Long productoId;
     private String nombreProducto;
-    private Double precioUnitario;
+    private BigDecimal precioUnitario;
     private Integer cantidad;
-    private Double subtotal;
+    private BigDecimal subtotal;
 
     @ManyToOne
     @JoinColumn(name = "id_carrito")

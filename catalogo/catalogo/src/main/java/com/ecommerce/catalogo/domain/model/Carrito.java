@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @Getter
@@ -16,5 +17,5 @@ public class Carrito {
     private Long id;
     private Long usuarioId;
     private List<ItemCarrito> items;
-    private Double precioTotal;
+    private BigDecimal precioTotal;
 }

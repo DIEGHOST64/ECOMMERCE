@@ -80,7 +80,7 @@ public class CompraUseCase {
                             "<p>Tu compra ha sido procesada exitosamente.</p>" +
                             "<p><strong>Número de orden:</strong> " + compra.getId() + "</p>" +
                             "<p><strong>Fecha:</strong> " + fechaFormateada + "</p>" +
-                            "<p><strong>Total:</strong> $" + String.format("%.2f", compra.getTotal()) + "</p>" +
+                            "<p><strong>Total:</strong> $" + compra.getTotal() + "</p>" +
                             "<p>Gracias por tu compra.</p>")
                     .html(true)
                     .build();
@@ -88,10 +88,22 @@ public class CompraUseCase {
             // Crear notificación por SMS si tiene teléfono
             NotificacionSMS sms = null;
             if (usuario.getTelefono() != null && !usuario.getTelefono().isEmpty()) {
+                // Construir lista de productos comprados
+                StringBuilder productosTexto = new StringBuilder();
+                int maxProductos = Math.min(3, compra.getItems().size()); // Máximo 3 productos para no exceder límite SMS
+                for (int i = 0; i < maxProductos; i++) {
+                    productosTexto.append(compra.getItems().get(i).getNombreProducto());
+                    if (i < maxProductos - 1) productosTexto.append(", ");
+                }
+                if (compra.getItems().size() > 3) {
+                    productosTexto.append(" y ").append(compra.getItems().size() - 3).append(" más");
+                }
+                
                 sms = NotificacionSMS.builder()
                         .numeroTelefono(usuario.getTelefono())
-                        .mensaje("Compra #" + compra.getId() + " confirmada por $" + 
-                                String.format("%.2f", compra.getTotal()) + ". Gracias por tu compra!")
+                        .mensaje("Hola " + usuario.getNombre() + "! Tu compra #" + compra.getId() + 
+                                " ha sido confirmada. Productos: " + productosTexto.toString() + 
+                                ". Total: $" + compra.getTotal() + ". Gracias por tu preferencia!")
                         .build();
             }
             

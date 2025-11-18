@@ -8,6 +8,7 @@ import com.ecommerce.catalogo.domain.model.gateway.CarritoGateway;
 import com.ecommerce.catalogo.domain.model.gateway.UsuarioGateway;
 import lombok.AllArgsConstructor;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -52,7 +53,7 @@ public class CarritoUseCase {
         // Configurar item del carrito
         itemCarrito.setNombreProducto(producto.getNombre());
         itemCarrito.setPrecioUnitario(producto.getPrecio());
-        itemCarrito.setSubtotal(producto.getPrecio() * itemCarrito.getCantidad());
+        itemCarrito.setSubtotal(producto.getPrecio().multiply(BigDecimal.valueOf(itemCarrito.getCantidad())));
 
         // Obtener o crear carrito
         Carrito carrito = carritoGateway.buscarPorUsuarioId(usuarioId);
@@ -80,7 +81,7 @@ public class CarritoUseCase {
             // Actualizar cantidad y subtotal
             int cantidadAdicional = itemCarrito.getCantidad();
             existente.get().setCantidad(cantidadTotal);
-            existente.get().setSubtotal(producto.getPrecio() * cantidadTotal);
+            existente.get().setSubtotal(producto.getPrecio().multiply(BigDecimal.valueOf(cantidadTotal)));
             // Actualizar stock
             productoUseCase.actualizarStock(itemCarrito.getProductoId(), cantidadAdicional);
         } else {
@@ -94,9 +95,9 @@ public class CarritoUseCase {
         }
 
         // Calcular precio total del carrito
-        double precioTotal = carrito.getItems().stream()
-                .mapToDouble(ItemCarrito::getSubtotal)
-                .sum();
+        BigDecimal precioTotal = carrito.getItems().stream()
+                .map(ItemCarrito::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         carrito.setPrecioTotal(precioTotal);
 
         return carritoGateway.guardar(carrito);
@@ -150,11 +151,11 @@ public class CarritoUseCase {
 
         // Actualizar item
         item.setCantidad(nuevaCantidad);
-        item.setSubtotal(producto.getPrecio() * nuevaCantidad);
+        item.setSubtotal(producto.getPrecio().multiply(BigDecimal.valueOf(nuevaCantidad)));
 
-        double precioTotal = carrito.getItems().stream()
-                .mapToDouble(ItemCarrito::getSubtotal)
-                .sum();
+        BigDecimal precioTotal = carrito.getItems().stream()
+                .map(ItemCarrito::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         carrito.setPrecioTotal(precioTotal);
 
         return carritoGateway.guardar(carrito);
@@ -195,9 +196,9 @@ public class CarritoUseCase {
         }
 
         carrito.setItems(itemsActualizados);
-        double precioTotal = itemsActualizados.stream()
-                .mapToDouble(ItemCarrito::getSubtotal)
-                .sum();
+        BigDecimal precioTotal = itemsActualizados.stream()
+                .map(ItemCarrito::getSubtotal)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
         carrito.setPrecioTotal(precioTotal);
 
         return carritoGateway.guardar(carrito);
@@ -220,7 +221,7 @@ public class CarritoUseCase {
 
         // Limpiar el carrito
         carrito.getItems().clear();
-        carrito.setPrecioTotal(0.0);
+        carrito.setPrecioTotal(BigDecimal.ZERO);
         return carritoGateway.guardar(carrito);
     }
 
@@ -246,7 +247,7 @@ public class CarritoUseCase {
             carrito = new Carrito();
             carrito.setUsuarioId(usuarioId);
             carrito.setItems(new ArrayList<>());
-            carrito.setPrecioTotal(0.0);
+            carrito.setPrecioTotal(BigDecimal.ZERO);
             // Guardar el carrito nuevo
             carrito = carritoGateway.guardar(carrito);
         }

@@ -23,6 +23,19 @@
         <aws.sdk.version>2.20.26</aws.sdk.version>
     </properties>
     
+    <dependencyManagement>
+        <dependencies>
+            <!-- AWS SDK BOM -->
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws.sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
     <dependencies>
         <!-- Spring Boot Starter Web -->
         <dependency>
@@ -30,27 +43,22 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         
-        <!-- AWS SDK BOM -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>bom</artifactId>
-            <version>${aws.sdk.version}</version>
-            <type>pom</type>
-            <scope>import</scope>
-        </dependency>
-        
         <!-- AWS SQS -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sqs</artifactId>
-            <version>${aws.sdk.version}</version>
         </dependency>
         
         <!-- AWS SES -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>ses</artifactId>
-            <version>${aws.sdk.version}</version>
+        </dependency>
+        
+        <!-- AWS SNS (necesario para AwsConfig) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sns</artifactId>
         </dependency>
         
         <!-- Twilio SMS (reemplaza AWS SNS) -->
