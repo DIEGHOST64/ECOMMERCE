@@ -18,5 +18,6 @@ public class ItemCarrito {
     private BigDecimal precioUnitario;
     private Integer cantidad;
     private BigDecimal subtotal;
+    private String imagenUrl;
 
 }

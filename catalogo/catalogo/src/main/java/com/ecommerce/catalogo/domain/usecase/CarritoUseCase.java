@@ -54,6 +54,7 @@ public class CarritoUseCase {
         itemCarrito.setNombreProducto(producto.getNombre());
         itemCarrito.setPrecioUnitario(producto.getPrecio());
         itemCarrito.setSubtotal(producto.getPrecio().multiply(BigDecimal.valueOf(itemCarrito.getCantidad())));
+        itemCarrito.setImagenUrl(producto.getImagenUrl());
 
         // Obtener o crear carrito
         Carrito carrito = carritoGateway.buscarPorUsuarioId(usuarioId);
@@ -82,6 +83,7 @@ public class CarritoUseCase {
             int cantidadAdicional = itemCarrito.getCantidad();
             existente.get().setCantidad(cantidadTotal);
             existente.get().setSubtotal(producto.getPrecio().multiply(BigDecimal.valueOf(cantidadTotal)));
+            existente.get().setImagenUrl(producto.getImagenUrl());
             // Actualizar stock
             productoUseCase.actualizarStock(itemCarrito.getProductoId(), cantidadAdicional);
         } else {

@@ -23,5 +23,7 @@ public class ProductoData {
     private String descripcion;
     private BigDecimal precio;
     private Integer stock;
+    
+    @Column(columnDefinition = "TEXT")
     private String imagenUrl;
 }
