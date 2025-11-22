@@ -1,5 +1,6 @@
 package com.ecommerce.catalogo.domain.usecase;
 
+import com.ecommerce.catalogo.domain.exception.ProductoNoEncontradoException;
 import com.ecommerce.catalogo.domain.exception.StockInsuficienteException;
 import com.ecommerce.catalogo.domain.model.Producto;
 import com.ecommerce.catalogo.domain.model.gateway.ProductoGateway;
@@ -19,12 +20,11 @@ public class ProductoUseCase {
 
 
     public Producto obtenerProducto(Long id) {
-        try {
-            return productoGateway.buscarPorId(id);
-        }catch (Exception e){
-            System.out.println(e.getMessage());
-            return new Producto();
+        Producto producto = productoGateway.buscarPorId(id);
+        if (producto == null) {
+            throw new ProductoNoEncontradoException("Producto no encontrado con ID: " + id);
         }
+        return producto;
     }
 
     public Producto actualizarStock(Long id, int cantidadARestar) {

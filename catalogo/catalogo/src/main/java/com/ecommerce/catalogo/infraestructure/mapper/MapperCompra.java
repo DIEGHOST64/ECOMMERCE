@@ -53,7 +53,8 @@ public class MapperCompra {
             data.getNombreProducto(),
             data.getPrecioUnitario(),
             data.getCantidad(),
-            data.getSubtotal()
+            data.getSubtotal(),
+            data.getImagenUrl()
         );
     }
 
@@ -65,6 +66,7 @@ public class MapperCompra {
         data.setPrecioUnitario(item.getPrecioUnitario());
         data.setCantidad(item.getCantidad());
         data.setSubtotal(item.getSubtotal());
+        data.setImagenUrl(item.getImagenUrl());
         return data;
     }
 }

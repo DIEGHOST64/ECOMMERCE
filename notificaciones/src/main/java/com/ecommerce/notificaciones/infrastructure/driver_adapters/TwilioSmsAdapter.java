@@ -1,4 +1,4 @@
-package com.ecommerce.notificaciones.infraestructure.driver_adapters;
+package com.ecommerce.notificaciones.infrastructure.driver_adapters;
 
 import com.ecommerce.notificaciones.domain.gateway.SMSGateway;
 import com.ecommerce.notificaciones.domain.model.NotificacionSMS;

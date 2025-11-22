@@ -23,6 +23,9 @@ public class ItemCarritoData {
     private BigDecimal precioUnitario;
     private Integer cantidad;
     private BigDecimal subtotal;
+    
+    @Column(columnDefinition = "TEXT")
+    private String imagenUrl;
 
     @ManyToOne
     @JoinColumn(name = "id_carrito")

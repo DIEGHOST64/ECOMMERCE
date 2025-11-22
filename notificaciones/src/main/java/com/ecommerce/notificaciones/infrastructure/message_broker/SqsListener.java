@@ -65,8 +65,10 @@ public class SqsListener {
             eliminarMensaje(message.receiptHandle());
             
         } catch (Exception e) {
-            log.error("Error procesando mensaje de SQS: {}", e.getMessage(), e);
-            // El mensaje no se elimina, volverá a estar disponible después del visibility timeout
+            log.error("Error procesando mensaje de SQS: {}", e.getMessage());
+            // Eliminar el mensaje problemático para evitar que bloquee la cola
+            log.warn("Eliminando mensaje problemático de la cola para continuar procesando otros mensajes");
+            eliminarMensaje(message.receiptHandle());
         }
     }
     

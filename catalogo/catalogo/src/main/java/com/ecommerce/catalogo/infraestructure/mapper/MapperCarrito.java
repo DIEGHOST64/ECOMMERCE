@@ -27,6 +27,7 @@ public class MapperCarrito {
                     itemData.setPrecioUnitario(item.getPrecioUnitario());
                     itemData.setCantidad(item.getCantidad());
                     itemData.setSubtotal(item.getSubtotal());
+                    itemData.setImagenUrl(item.getImagenUrl());
                     itemData.setCarrito(carritoData); // importante establecer relación bidireccional
                     return itemData;
                 }).collect(Collectors.toList());
@@ -50,6 +51,7 @@ public class MapperCarrito {
                     item.setPrecioUnitario(itemData.getPrecioUnitario());
                     item.setCantidad(itemData.getCantidad());
                     item.setSubtotal(itemData.getSubtotal());
+                    item.setImagenUrl(itemData.getImagenUrl());
                     item.setCarritoId(carritoData.getIdCarrito());
                     return item;
                 }).collect(Collectors.toList());

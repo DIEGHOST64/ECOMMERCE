@@ -40,11 +40,25 @@ public class CompraUseCase {
             throw new CarritoVacioException("No hay items en el carrito para realizar la compra");
         }
 
-        // Crear la compra con nuevos items (para evitar problemas de persistencia)
+        // Crear la compra con copias nuevas de los items (sin id para que Hibernate los persista como nuevos)
         Compra compra = new Compra();
         compra.setUsuarioId(usuarioId);
         compra.setFechaCompra(LocalDateTime.now());
-        compra.setItems(new ArrayList<>(carrito.getItems())); // Crear nueva lista con los items
+        
+        // Crear copias de los items del carrito sin el id
+        List<com.ecommerce.catalogo.domain.model.ItemCarrito> itemsCompra = new ArrayList<>();
+        for (com.ecommerce.catalogo.domain.model.ItemCarrito item : carrito.getItems()) {
+            com.ecommerce.catalogo.domain.model.ItemCarrito nuevoItem = new com.ecommerce.catalogo.domain.model.ItemCarrito();
+            nuevoItem.setProductoId(item.getProductoId());
+            nuevoItem.setNombreProducto(item.getNombreProducto());
+            nuevoItem.setPrecioUnitario(item.getPrecioUnitario());
+            nuevoItem.setCantidad(item.getCantidad());
+            nuevoItem.setSubtotal(item.getSubtotal());
+            nuevoItem.setImagenUrl(item.getImagenUrl());
+            itemsCompra.add(nuevoItem);
+        }
+        
+        compra.setItems(itemsCompra);
         compra.setTotal(carrito.getPrecioTotal());
         compra.setEstado("COMPLETADA");
 

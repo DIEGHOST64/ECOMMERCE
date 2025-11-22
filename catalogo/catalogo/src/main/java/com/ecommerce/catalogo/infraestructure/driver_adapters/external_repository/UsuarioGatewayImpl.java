@@ -34,7 +34,7 @@ public class UsuarioGatewayImpl implements UsuarioGateway {
             }
             return false;
         } catch (Exception e) {
-            // Si hay error en la comunicacion, consideramos que el usuario no existe
+            
             System.err.println("Error al verificar usuario con ID " + usuarioId + ": " + e.getMessage());
             return false;
         }
