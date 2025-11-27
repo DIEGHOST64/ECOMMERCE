@@ -195,4 +195,4 @@ Este proyecto esta bajo la Licencia MIT. Ver el archivo `LICENSE` para mas detal
 
 ---
 
-Desarrollado con dedicacion por el equipo de desarrollo
+Desarrollado por DIEGHOST64
