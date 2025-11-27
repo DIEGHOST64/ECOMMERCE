@@ -1,4 +1,4 @@
-# E-Commerce Microservices Platform
+﻿# E-Commerce Microservices Platform
 
 ![Java](https://img.shields.io/badge/Java-17-orange?style=for-the-badge&logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green?style=for-the-badge&logo=springboot)
@@ -431,5 +431,6 @@ Si encuentras algún problema o tienes preguntas:
 ---
 
 **Construido con ❤️ usando Spring Boot y React**
-#   U p d a t e d   2 0 2 5 - 1 1 - 2 6   2 0 : 2 0 : 2 3  
+#   U p d a t e d   2 0 2 5 - 1 1 - 2 6   2 0 : 2 0 : 2 3 
+ 
  
