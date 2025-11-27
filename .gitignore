@@ -42,6 +42,7 @@ Thumbs.db
 # Application
 application-local.properties
 *.env
+!.env.example
 
 # Spring Boot
 HELP.md
@@ -51,12 +52,25 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+dist/
+/frontend/build
+
 # Logs
 logs/
 *.log.*
 
-# Scripts locales y documentación interna
-start-services.ps1
-stop-services.ps1
-logs.ps1
-FRONTEND_RECOMMENDATION.md
+# Database
+*.db
+*.sqlite
+
+# AWS & Secrets
+.aws-sam/
+*.pem
+*.key
+credentials.json
