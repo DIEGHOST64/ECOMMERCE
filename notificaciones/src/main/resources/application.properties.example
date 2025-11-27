@@ -3,7 +3,7 @@ server.port=9093
 
 # AWS Configuration
 aws.region=us-east-1
-aws.ses.senderEmail=kratexvertex90@gmail.com
+aws.ses.senderEmail=your-email@example.com
 
 # AWS SNS Configuration (disabled - using Twilio instead)
 aws.sns.enabled=false
