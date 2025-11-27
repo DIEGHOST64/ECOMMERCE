@@ -431,3 +431,5 @@ Si encuentras algún problema o tienes preguntas:
 ---
 
 **Construido con ❤️ usando Spring Boot y React**
+#   U p d a t e d   2 0 2 5 - 1 1 - 2 6   2 0 : 2 0 : 2 3  
+ 
