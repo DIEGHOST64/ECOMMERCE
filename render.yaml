@@ -1,0 +1,44 @@
+version: 1
+services:
+  - type: pserv
+    name: ecommerce-auth
+    env: java
+    buildCommand: cd auth/auth/auth && ./mvnw clean package -DskipTests
+    startCommand: cd auth/auth/auth && java -Dserver.port=$PORT -jar target/auth-0.0.1-SNAPSHOT.jar
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: DB_NAME
+        value: ecommerce
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+        
+  - type: pserv
+    name: ecommerce-catalogo
+    env: java
+    buildCommand: cd catalogo/catalogo && ./mvnw clean package -DskipTests
+    startCommand: cd catalogo/catalogo && java -Dserver.port=$PORT -jar target/catalogo-0.0.1-SNAPSHOT.jar
+    envVars:
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: 5432
+      - key: DB_NAME
+        value: ecommerce
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: AUTH_SERVICE_URL
+        sync: false
+
+databases:
+  - name: ecommerce-db
+    databaseName: ecommerce
+    user: postgres
