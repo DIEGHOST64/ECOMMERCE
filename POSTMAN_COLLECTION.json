@@ -1,0 +1,425 @@
+{
+	"info": {
+		"name": "E-Commerce Microservices API",
+		"description": "Colección completa de endpoints para la plataforma de E-Commerce con microservicios",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{
+			"key": "auth_url",
+			"value": "http://localhost:9090",
+			"type": "string"
+		},
+		{
+			"key": "catalogo_url",
+			"value": "http://localhost:9092",
+			"type": "string"
+		},
+		{
+			"key": "notificaciones_url",
+			"value": "http://localhost:9093",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "usuarioId",
+			"value": "1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "Auth Service",
+			"item": [
+				{
+					"name": "Registrar Usuario",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\",\n  \"email\": \"test@example.com\",\n  \"nombre\": \"Usuario Test\",\n  \"telefono\": \"+1234567890\"\n}"
+						},
+						"url": {
+							"raw": "{{auth_url}}/api/ecommerce/usuario/save",
+							"host": ["{{auth_url}}"],
+							"path": ["api", "ecommerce", "usuario", "save"]
+						},
+						"description": "Crea un nuevo usuario en el sistema"
+					}
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    var jsonData = pm.response.json();",
+									"    pm.collectionVariables.set(\"token\", jsonData.token);",
+									"    pm.collectionVariables.set(\"usuarioId\", jsonData.usuario.id);",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"username\": \"testuser\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{auth_url}}/api/ecommerce/usuario/login",
+							"host": ["{{auth_url}}"],
+							"path": ["api", "ecommerce", "usuario", "login"]
+						},
+						"description": "Autentica un usuario y devuelve un token JWT"
+					}
+				},
+				{
+					"name": "Obtener Usuario por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{auth_url}}/api/ecommerce/usuario/{{usuarioId}}",
+							"host": ["{{auth_url}}"],
+							"path": ["api", "ecommerce", "usuario", "{{usuarioId}}"]
+						},
+						"description": "Obtiene la información de un usuario por su ID"
+					}
+				},
+				{
+					"name": "Verificar si Usuario Existe",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{auth_url}}/api/ecommerce/usuario/{{usuarioId}}/existe",
+							"host": ["{{auth_url}}"],
+							"path": ["api", "ecommerce", "usuario", "{{usuarioId}}", "existe"]
+						},
+						"description": "Verifica si un usuario existe (usado por otros microservicios)"
+					}
+				},
+				{
+					"name": "Actualizar Usuario",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": {{usuarioId}},\n  \"username\": \"testuser_updated\",\n  \"email\": \"updated@example.com\",\n  \"nombre\": \"Usuario Actualizado\",\n  \"telefono\": \"+0987654321\"\n}"
+						},
+						"url": {
+							"raw": "{{auth_url}}/api/ecommerce/usuario/update",
+							"host": ["{{auth_url}}"],
+							"path": ["api", "ecommerce", "usuario", "update"]
+						},
+						"description": "Actualiza la información de un usuario existente"
+					}
+				},
+				{
+					"name": "Eliminar Usuario",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{auth_url}}/api/ecommerce/usuario/{{usuarioId}}",
+							"host": ["{{auth_url}}"],
+							"path": ["api", "ecommerce", "usuario", "{{usuarioId}}"]
+						},
+						"description": "Elimina un usuario del sistema"
+					}
+				}
+			]
+		},
+		{
+			"name": "Productos",
+			"item": [
+				{
+					"name": "Listar Todos los Productos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/producto",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "producto"]
+						},
+						"description": "Obtiene la lista completa de productos disponibles"
+					}
+				},
+				{
+					"name": "Obtener Producto por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/producto/1",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "producto", "1"]
+						},
+						"description": "Obtiene los detalles de un producto específico"
+					}
+				},
+				{
+					"name": "Crear Producto",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Laptop Dell XPS 15\",\n  \"descripcion\": \"Laptop de alto rendimiento\",\n  \"precio\": 1299.99,\n  \"stock\": 10,\n  \"imagenUrl\": \"https://example.com/laptop.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/producto",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "producto"]
+						},
+						"description": "Crea un nuevo producto en el catálogo (requiere permisos de admin)"
+					}
+				},
+				{
+					"name": "Actualizar Producto",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Laptop Dell XPS 15 (Actualizada)\",\n  \"descripcion\": \"Laptop de alto rendimiento con mejoras\",\n  \"precio\": 1199.99,\n  \"stock\": 15,\n  \"imagenUrl\": \"https://example.com/laptop-new.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/producto/1",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "producto", "1"]
+						},
+						"description": "Actualiza un producto existente (requiere permisos de admin)"
+					}
+				},
+				{
+					"name": "Eliminar Producto",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/producto/1",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "producto", "1"]
+						},
+						"description": "Elimina un producto del catálogo (requiere permisos de admin)"
+					}
+				}
+			]
+		},
+		{
+			"name": "Carrito",
+			"item": [
+				{
+					"name": "Ver Carrito",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/carrito?usuarioId={{usuarioId}}",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "carrito"],
+							"query": [
+								{
+									"key": "usuarioId",
+									"value": "{{usuarioId}}"
+								}
+							]
+						},
+						"description": "Obtiene el contenido actual del carrito del usuario"
+					}
+				},
+				{
+					"name": "Agregar Producto al Carrito",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"productoId\": 1,\n  \"cantidad\": 2\n}"
+						},
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/carrito/agregar?usuarioId={{usuarioId}}",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "carrito", "agregar"],
+							"query": [
+								{
+									"key": "usuarioId",
+									"value": "{{usuarioId}}"
+								}
+							]
+						},
+						"description": "Agrega un producto al carrito del usuario"
+					}
+				},
+				{
+					"name": "Actualizar Cantidad",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/carrito/actualizar/1?usuarioId={{usuarioId}}&cantidad=5",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "carrito", "actualizar", "1"],
+							"query": [
+								{
+									"key": "usuarioId",
+									"value": "{{usuarioId}}"
+								},
+								{
+									"key": "cantidad",
+									"value": "5"
+								}
+							]
+						},
+						"description": "Actualiza la cantidad de un producto en el carrito"
+					}
+				},
+				{
+					"name": "Eliminar Producto del Carrito",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/carrito/eliminar/1?usuarioId={{usuarioId}}",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "carrito", "eliminar", "1"],
+							"query": [
+								{
+									"key": "usuarioId",
+									"value": "{{usuarioId}}"
+								}
+							]
+						},
+						"description": "Elimina un producto específico del carrito"
+					}
+				},
+				{
+					"name": "Vaciar Carrito",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/carrito/vaciar?usuarioId={{usuarioId}}",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "carrito", "vaciar"],
+							"query": [
+								{
+									"key": "usuarioId",
+									"value": "{{usuarioId}}"
+								}
+							]
+						},
+						"description": "Vacía completamente el carrito del usuario"
+					}
+				}
+			]
+		},
+		{
+			"name": "Compras",
+			"item": [
+				{
+					"name": "Realizar Compra",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/compras/realizar?usuarioId={{usuarioId}}",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "compras", "realizar"],
+							"query": [
+								{
+									"key": "usuarioId",
+									"value": "{{usuarioId}}"
+								}
+							]
+						},
+						"description": "Convierte el carrito actual en una compra confirmada"
+					}
+				},
+				{
+					"name": "Obtener Compras por Usuario",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/compras/usuario/{{usuarioId}}",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "compras", "usuario", "{{usuarioId}}"]
+						},
+						"description": "Obtiene el historial de compras de un usuario"
+					}
+				},
+				{
+					"name": "Obtener Compra por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/compras/1",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "compras", "1"]
+						},
+						"description": "Obtiene los detalles de una compra específica"
+					}
+				},
+				{
+					"name": "Obtener Todas las Compras (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{catalogo_url}}/api/ecommerce/compras",
+							"host": ["{{catalogo_url}}"],
+							"path": ["api", "ecommerce", "compras"]
+						},
+						"description": "Obtiene todas las compras del sistema (requiere permisos de admin)"
+					}
+				}
+			]
+		}
+	]
+}
