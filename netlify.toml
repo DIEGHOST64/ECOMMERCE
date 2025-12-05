@@ -1,0 +1,15 @@
+# Netlify Configuration
+[build]
+  base = "frontend/"
+  command = "npm run build"
+  publish = "build/"
+
+# Redirect rules
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Environment variables (configure in Netlify UI)
+# REACT_APP_AUTH_URL=https://your-auth-service.onrender.com
+# REACT_APP_CATALOGO_URL=https://your-catalogo-service.onrender.com
