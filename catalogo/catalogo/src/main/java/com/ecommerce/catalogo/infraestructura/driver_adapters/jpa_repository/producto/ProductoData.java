@@ -1,0 +1,29 @@
+
+package com.ecommerce.catalogo.infraestructura.driver_adapters.jpa_repository.producto;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
+
+@Entity
+@Table(name = "products")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class ProductoData {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+
+    private String nombre;
+    private String descripcion;
+    private BigDecimal precio;
+    private Integer stock;
+    
+    @Column(columnDefinition = "TEXT")
+    private String imagenUrl;
+}

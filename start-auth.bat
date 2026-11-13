@@ -1,16 +1,22 @@
 @echo off
-REM Cargar variables de entorno directamente
-set AWS_ACCESS_KEY_ID=REDACTED
-set AWS_SECRET_ACCESS_KEY=REDACTED
-set AWS_REGION=us-east-1
-set AWS_SQS_QUEUE_URL=https://sqs.us-east-1.amazonaws.com/570814989657/ecommerce-notifications
-set DB_HOST=localhost
-set DB_PORT=5432
-set DB_NAME=ecommerce
-set DB_USERNAME=postgres
-set DB_PASSWORD=admin
+setlocal
+cd /d "%~dp0"
 
-echo Iniciando AUTH en puerto 9090...
-cd "auth\auth\auth"
-call mvnw.cmd spring-boot:run
-pause
+if not exist ".env" (
+    echo [ERROR] No existe el archivo .env
+    echo Ejecuta setup.bat o copia .env.example a .env y edita los secretos.
+    pause
+    exit /b 1
+)
+
+docker compose version >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Docker Compose v2 no esta disponible.
+    echo Instala Docker Desktop y vuelve a intentarlo.
+    pause
+    exit /b 1
+)
+
+echo Iniciando AUTH y sus dependencias...
+docker compose up -d --build auth
+if errorlevel 1 pause

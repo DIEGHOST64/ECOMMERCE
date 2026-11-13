@@ -1,373 +1,524 @@
-# API Documentation
+# API
 
-## 🌐 Endpoints de la API
+Documentación de los endpoints expuestos por los servicios. Todos los cuerpos son JSON y las respuestas de error también.
 
-Este documento describe los endpoints disponibles en cada microservicio.
+- Auth: `http://localhost:9090`
+- Catálogo: `http://localhost:9092`
+- Notificaciones: `http://localhost:9093` (solo healthcheck)
 
-## Auth Service (Puerto 9090)
+## Autenticación
 
-Base URL: `http://localhost:9090`
+Los endpoints protegidos requieren:
 
-### Autenticación
-
-#### Registrar Usuario
 ```http
-POST /api/auth/register
-Content-Type: application/json
-
-{
-  "username": "usuario",
-  "email": "usuario@ejemplo.com",
-  "password": "password123",
-  "nombre": "Nombre Completo",
-  "telefono": "+1234567890"
-}
+Authorization: Bearer <token>
 ```
 
-**Respuesta exitosa (201 Created):**
-```json
-{
-  "id": 1,
-  "username": "usuario",
-  "email": "usuario@ejemplo.com",
-  "nombre": "Nombre Completo",
-  "telefono": "+1234567890",
-  "rol": "USER"
-}
-```
+El token se obtiene en `POST /api/ecommerce/usuario/login`. La identidad (id y rol) se extrae del JWT; el cliente **no** debe enviar `usuarioId` ni `X-User-Role`.
 
-#### Iniciar Sesión
-```http
-POST /api/auth/login
-Content-Type: application/json
+### Roles
 
-{
-  "username": "usuario",
-  "password": "password123"
-}
-```
+| Rol | Permisos |
+| --- | --- |
+| Público | Registro, login, consultar productos, healthchecks |
+| `USER` | Carrito, compras propias, perfil propio |
+| `ADMIN` | Todo lo anterior + CRUD de productos + listar todas las compras + eliminar usuarios |
 
-**Respuesta exitosa (200 OK):**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "usuario": {
-    "id": 1,
-    "username": "usuario",
-    "email": "usuario@ejemplo.com",
-    "rol": "USER"
-  }
-}
-```
-
-#### Obtener Usuario por ID
-```http
-GET /api/auth/usuarios/{id}
-```
-
-**Respuesta exitosa (200 OK):**
-```json
-{
-  "id": 1,
-  "username": "usuario",
-  "email": "usuario@ejemplo.com",
-  "nombre": "Nombre Completo",
-  "rol": "USER"
-}
-```
+El registro siempre crea usuarios con rol `USER`. Para crear un administrador, promueve el usuario directamente en PostgreSQL (ver [INSTALL.md](./INSTALL.md#crear-un-administrador)).
 
 ---
 
-## Catálogo Service (Puerto 9092)
+## Auth Service
+
+Base URL: `http://localhost:9090`
+
+### Registrar usuario
+
+```http
+POST /api/ecommerce/usuario/save
+Content-Type: application/json
+```
+
+```json
+{
+  "nombre": "Ana Pérez",
+  "email": "ana@ejemplo.com",
+  "password": "secreto123",
+  "telefono": "+573001234567",
+  "edad": 28
+}
+```
+
+Validaciones:
+
+- `nombre`: obligatorio, máximo 100 caracteres.
+- `email`: obligatorio, formato válido, máximo 120 caracteres.
+- `password`: obligatorio, entre 6 y 72 caracteres.
+- `telefono`: opcional, máximo 30 caracteres.
+- `edad`: opcional, entre 0 y 120.
+
+**201 Created**
+
+```json
+{
+  "id": 1,
+  "nombre": "Ana Pérez",
+  "email": "ana@ejemplo.com",
+  "telefono": "+573001234567",
+  "role": "USER",
+  "edad": 28
+}
+```
+
+### Iniciar sesión
+
+```http
+POST /api/ecommerce/usuario/login
+Content-Type: application/json
+```
+
+```json
+{
+  "email": "ana@ejemplo.com",
+  "password": "secreto123"
+}
+```
+
+**200 OK**
+
+```json
+{
+  "id": 1,
+  "email": "ana@ejemplo.com",
+  "nombre": "Ana Pérez",
+  "role": "USER",
+  "token": "eyJhbGciOiJIUzI1NiJ9...",
+  "tokenType": "Bearer",
+  "expiraEnSegundos": 86400,
+  "mensaje": "Login exitoso"
+}
+```
+
+Errores:
+
+- `401` credenciales inválidas.
+- `400` email con formato inválido o campos vacíos.
+
+### Obtener usuario
+
+```http
+GET /api/ecommerce/usuario/{id}
+Authorization: Bearer <token>
+```
+
+Permitido para el propio usuario o para un `ADMIN`.
+
+**200 OK**
+
+```json
+{
+  "id": 1,
+  "nombre": "Ana Pérez",
+  "email": "ana@ejemplo.com",
+  "telefono": "+573001234567",
+  "role": "USER",
+  "edad": 28
+}
+```
+
+### Verificar existencia (interno)
+
+```http
+GET /api/ecommerce/usuario/{id}/existe
+```
+
+Endpoint público pensado para integraciones internas. Devuelve `true` o `false` y no expone datos personales.
+
+### Actualizar usuario
+
+```http
+PUT /api/ecommerce/usuario/update
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
+{
+  "id": 1,
+  "nombre": "Ana Pérez",
+  "email": "ana@ejemplo.com",
+  "password": "nuevaClave123",
+  "telefono": "+573009876543",
+  "edad": 29
+}
+```
+
+- El `id` es obligatorio.
+- Los campos omitidos o nulos no se modifican.
+- El rol no se puede cambiar desde este endpoint.
+- Permitido para el propio usuario o para un `ADMIN`.
+
+**200 OK** con el usuario actualizado.
+
+### Eliminar usuario
+
+```http
+DELETE /api/ecommerce/usuario/{id}
+Authorization: Bearer <token>
+```
+
+Solo `ADMIN`.
+
+**204 No Content**
+
+---
+
+## Catálogo Service
 
 Base URL: `http://localhost:9092`
 
 ### Productos
 
-#### Listar Todos los Productos
+#### Listar productos (público)
+
 ```http
-GET /api/productos
+GET /api/ecommerce/producto
 ```
 
-**Respuesta exitosa (200 OK):**
+**200 OK**
+
 ```json
 [
   {
     "id": 1,
-    "nombre": "Producto 1",
-    "descripcion": "Descripción del producto",
-    "precio": 99.99,
-    "stock": 50,
-    "imagenUrl": "https://ejemplo.com/imagen.jpg",
-    "categoriaId": 1
+    "nombre": "Laptop Dell XPS 15",
+    "descripcion": "Laptop de alto rendimiento",
+    "precio": 1299.99,
+    "stock": 10,
+    "imagenUrl": "https://ejemplo.com/laptop.jpg"
   }
 ]
 ```
 
-#### Obtener Producto por ID
+#### Obtener producto (público)
+
 ```http
-GET /api/productos/{id}
+GET /api/ecommerce/producto/{id}
 ```
 
-#### Crear Producto (Admin)
+**200 OK** con el producto. `404` si no existe.
+
+#### Crear producto (ADMIN)
+
 ```http
-POST /api/productos
+POST /api/ecommerce/producto
+Authorization: Bearer <token-admin>
 Content-Type: application/json
-
-{
-  "nombre": "Nuevo Producto",
-  "descripcion": "Descripción del producto",
-  "precio": 149.99,
-  "stock": 30,
-  "imagenUrl": "https://ejemplo.com/imagen.jpg",
-  "categoriaId": 1
-}
 ```
 
-#### Actualizar Producto (Admin)
-```http
-PUT /api/productos/{id}
-Content-Type: application/json
-
-{
-  "nombre": "Producto Actualizado",
-  "precio": 129.99,
-  "stock": 25
-}
-```
-
-#### Eliminar Producto (Admin)
-```http
-DELETE /api/productos/{id}
-```
-
-### Categorías
-
-#### Listar Categorías
-```http
-GET /api/categorias
-```
-
-**Respuesta exitosa (200 OK):**
 ```json
-[
-  {
-    "id": 1,
-    "nombre": "Electrónica",
-    "descripcion": "Productos electrónicos"
-  }
-]
-```
-
-#### Crear Categoría (Admin)
-```http
-POST /api/categorias
-Content-Type: application/json
-
 {
-  "nombre": "Nueva Categoría",
-  "descripcion": "Descripción de la categoría"
+  "nombre": "Laptop Dell XPS 15",
+  "descripcion": "Laptop de alto rendimiento",
+  "precio": 1299.99,
+  "stock": 10,
+  "imagenUrl": "https://ejemplo.com/laptop.jpg"
 }
 ```
 
-### Carrito de Compras
+Validaciones: nombre obligatorio (máx. 150), descripción máx. 2000, precio mayor a 0 con hasta 2 decimales, stock mayor o igual a 0, `imagenUrl` máx. 2000.
 
-#### Obtener Carrito del Usuario
+**201 Created** con el producto.
+
+#### Actualizar producto (ADMIN)
+
 ```http
-GET /api/carrito/{usuarioId}
+PUT /api/ecommerce/producto/{id}
+Authorization: Bearer <token-admin>
+Content-Type: application/json
 ```
 
-**Respuesta exitosa (200 OK):**
+Mismo cuerpo que la creación. **200 OK** con el producto actualizado.
+
+#### Eliminar producto (ADMIN)
+
+```http
+DELETE /api/ecommerce/producto/{id}
+Authorization: Bearer <token-admin>
+```
+
+**204 No Content**
+
+### Carrito
+
+Todos los endpoints requieren JWT. El carrito pertenece al usuario del token; no se acepta `usuarioId` por parámetro.
+
+#### Ver carrito
+
+```http
+GET /api/ecommerce/carrito
+Authorization: Bearer <token>
+```
+
+**200 OK**
+
 ```json
 {
   "id": 1,
   "usuarioId": 1,
   "items": [
     {
-      "id": 1,
+      "id": 10,
       "productoId": 5,
-      "producto": {
-        "id": 5,
-        "nombre": "Producto",
-        "precio": 99.99,
-        "imagenUrl": "..."
-      },
+      "nombreProducto": "Laptop Dell XPS 15",
+      "precioUnitario": 1299.99,
       "cantidad": 2,
-      "precioUnitario": 99.99
+      "subtotal": 2599.98,
+      "imagenUrl": "https://ejemplo.com/laptop.jpg"
     }
   ],
-  "total": 199.98
+  "precioTotal": 2599.98
 }
 ```
 
-#### Agregar Producto al Carrito
-```http
-POST /api/carrito/{usuarioId}/items
-Content-Type: application/json
+Si el usuario aún no tiene carrito, se devuelve un carrito vacío.
 
+#### Agregar producto
+
+```http
+POST /api/ecommerce/carrito/agregar
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+```json
 {
   "productoId": 5,
   "cantidad": 2
 }
 ```
 
-#### Actualizar Cantidad de Item
-```http
-PUT /api/carrito/{usuarioId}/items/{itemId}
-Content-Type: application/json
+- `cantidad`: entre 1 y 10 por operación.
+- No descuenta stock; solo valida que el producto exista.
+- Si el producto ya está en el carrito, se suma la cantidad.
 
-{
-  "cantidad": 3
-}
+**200 OK** con el carrito actualizado.
+
+#### Actualizar cantidad
+
+```http
+PUT /api/ecommerce/carrito/actualizar/{productoId}?cantidad=3
+Authorization: Bearer <token>
 ```
 
-#### Eliminar Item del Carrito
+`cantidad` es un query param obligatorio, entre 1 y 10.
+
+**200 OK** con el carrito actualizado.
+
+#### Eliminar producto
+
 ```http
-DELETE /api/carrito/{usuarioId}/items/{itemId}
+DELETE /api/ecommerce/carrito/eliminar/{productoId}
+Authorization: Bearer <token>
 ```
 
-#### Vaciar Carrito
+**200 OK** con el carrito actualizado.
+
+#### Vaciar carrito
+
 ```http
-DELETE /api/carrito/{usuarioId}
+DELETE /api/ecommerce/carrito/vaciar
+Authorization: Bearer <token>
 ```
 
-### Pedidos
+**204 No Content**
 
-#### Crear Pedido desde Carrito
+### Compras
+
+#### Realizar compra
+
 ```http
-POST /api/pedidos/{usuarioId}
-Content-Type: application/json
-
-{
-  "direccionEnvio": "Calle Principal 123, Ciudad",
-  "metodoPago": "TARJETA"
-}
+POST /api/ecommerce/compras/realizar
+Authorization: Bearer <token>
 ```
 
-**Respuesta exitosa (201 Created):**
+Convierte el carrito actual en una compra:
+
+1. Valida el usuario contra Auth.
+2. Verifica que el carrito no esté vacío.
+3. Descuenta el stock de cada producto de forma atómica.
+4. Guarda la compra con estado `COMPLETADA`.
+5. Vacía el carrito.
+6. Publica la notificación después del commit.
+
+**201 Created**
+
 ```json
 {
-  "id": 1,
+  "id": 12,
   "usuarioId": 1,
-  "items": [...],
-  "total": 199.98,
-  "estado": "PENDIENTE",
-  "fechaCreacion": "2025-11-26T10:30:00",
-  "direccionEnvio": "Calle Principal 123, Ciudad",
-  "metodoPago": "TARJETA"
+  "fechaCompra": "2026-11-12T10:30:00",
+  "items": [
+    {
+      "id": 30,
+      "productoId": 5,
+      "nombreProducto": "Laptop Dell XPS 15",
+      "precioUnitario": 1299.99,
+      "cantidad": 2,
+      "subtotal": 2599.98,
+      "imagenUrl": "https://ejemplo.com/laptop.jpg"
+    }
+  ],
+  "total": 2599.98,
+  "estado": "COMPLETADA"
 }
 ```
 
-#### Listar Pedidos del Usuario
+Errores:
+
+- `400` carrito vacío.
+- `409` stock insuficiente.
+- `404` usuario no encontrado.
+- `503` Auth no disponible.
+
+#### Listar compras de un usuario
+
 ```http
-GET /api/pedidos/usuario/{usuarioId}
+GET /api/ecommerce/compras/usuario/{usuarioId}
+Authorization: Bearer <token>
 ```
 
-#### Obtener Pedido por ID
+Permitido para el propio usuario o un `ADMIN`.
+
+**200 OK** con la lista de compras.
+
+#### Obtener compra
+
 ```http
-GET /api/pedidos/{id}
+GET /api/ecommerce/compras/{compraId}
+Authorization: Bearer <token>
 ```
 
-#### Actualizar Estado del Pedido (Admin)
-```http
-PUT /api/pedidos/{id}/estado
-Content-Type: application/json
+Permitido para el dueño de la compra o un `ADMIN`.
 
-{
-  "estado": "ENVIADO"
-}
+#### Listar todas las compras (ADMIN)
+
+```http
+GET /api/ecommerce/compras
+Authorization: Bearer <token-admin>
 ```
 
-**Estados disponibles:**
-- `PENDIENTE`
-- `CONFIRMADO`
-- `ENVIADO`
-- `ENTREGADO`
-- `CANCELADO`
+**200 OK** con todas las compras.
 
 ---
 
-## Notificaciones Service (Puerto 9093)
+## Notificaciones Service
 
 Base URL: `http://localhost:9093`
 
-### Notificaciones
+No expone endpoints de negocio. Los mensajes llegan por RabbitMQ.
 
-#### Enviar Email
+### Healthcheck
+
 ```http
-POST /api/notificaciones/email
-Content-Type: application/json
-
-{
-  "destinatario": "usuario@ejemplo.com",
-  "asunto": "Confirmación de Pedido",
-  "mensaje": "Tu pedido #123 ha sido confirmado"
-}
+GET /actuator/health
 ```
 
-#### Enviar SMS
-```http
-POST /api/notificaciones/sms
-Content-Type: application/json
+**200 OK**
 
-{
-  "numeroTelefono": "+1234567890",
-  "mensaje": "Tu código de verificación es: 123456"
-}
+```json
+{ "status": "UP" }
 ```
+
+También disponible en Auth (`:9090`) y Catálogo (`:9092`).
 
 ---
 
-## 🔐 Autenticación
+## Formato de errores
 
-La mayoría de los endpoints requieren autenticación. Incluye el token JWT en el header:
+Los errores de negocio y validación usan:
 
-```http
-Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```json
+{
+  "timestamp": "2026-11-12T10:30:00Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Datos invalidos",
+  "path": "/api/ecommerce/usuario/save",
+  "fieldErrors": {
+    "email": "El email no es valido",
+    "password": "La contrasena es obligatoria"
+  }
+}
 ```
 
-## 📝 Códigos de Estado HTTP
+`fieldErrors` solo aparece en errores de validación. Los errores de seguridad (`401`/`403`) devuelven `timestamp`, `status`, `error` y `message`.
 
-- `200 OK`: Solicitud exitosa
-- `201 Created`: Recurso creado exitosamente
-- `204 No Content`: Solicitud exitosa sin contenido de respuesta
-- `400 Bad Request`: Datos inválidos en la solicitud
-- `401 Unauthorized`: No autenticado o token inválido
-- `403 Forbidden`: No autorizado para realizar la acción
-- `404 Not Found`: Recurso no encontrado
-- `500 Internal Server Error`: Error del servidor
+| Código | Significado |
+| --- | --- |
+| 200 | Operación exitosa |
+| 201 | Recurso creado |
+| 204 | Operación exitosa sin cuerpo |
+| 400 | Datos inválidos |
+| 401 | Token ausente, inválido o expirado |
+| 403 | Sin permisos para el recurso |
+| 404 | Recurso no encontrado |
+| 409 | Conflicto (stock, email duplicado) |
+| 503 | Servicio dependiente no disponible |
 
-## 🧪 Probar la API
+---
 
-### Usando cURL
+## Ejemplos con cURL
 
-**Registrar usuario:**
+### Registrar y hacer login
+
 ```bash
-curl -X POST http://localhost:9090/api/auth/register \
+curl -X POST http://localhost:9090/api/ecommerce/usuario/save \
   -H "Content-Type: application/json" \
-  -d "{\"username\":\"test\",\"email\":\"test@test.com\",\"password\":\"123456\"}"
+  -d '{"nombre":"Ana","email":"ana@ejemplo.com","password":"secreto123","telefono":"+573001234567","edad":28}'
+
+curl -X POST http://localhost:9090/api/ecommerce/usuario/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"ana@ejemplo.com","password":"secreto123"}'
 ```
 
-**Listar productos:**
+### Listar productos (público)
+
 ```bash
-curl http://localhost:9092/api/productos
+curl http://localhost:9092/api/ecommerce/producto
 ```
 
-### Usando Postman
+### Agregar al carrito y comprar
 
-1. Importa los endpoints desde este documento
-2. Configura las variables de entorno:
-   - `AUTH_URL`: http://localhost:9090
-   - `CATALOGO_URL`: http://localhost:9092
-   - `TOKEN`: (se obtiene del login)
+```bash
+TOKEN="<token-del-login>"
 
-## 🔄 CORS
+curl -X POST http://localhost:9092/api/ecommerce/carrito/agregar \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"productoId":1,"cantidad":2}'
 
-El backend está configurado para permitir peticiones desde:
-- `http://localhost:3000` (Frontend React)
+curl -X POST http://localhost:9092/api/ecommerce/compras/realizar \
+  -H "Authorization: Bearer $TOKEN"
+```
 
-Si necesitas agregar otros orígenes, modifica la configuración CORS en cada microservicio.
+### Crear un producto como administrador
+
+```bash
+ADMIN_TOKEN="<token-de-un-admin>"
+
+curl -X POST http://localhost:9092/api/ecommerce/producto \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"nombre":"Teclado","descripcion":"Mecanico","precio":89.99,"stock":20,"imagenUrl":null}'
+```
 
 ---
 
-Para más información sobre el proyecto, consulta el `README.md` principal.
+## CORS
+
+Los orígenes permitidos se configuran con `CORS_ALLOWED_ORIGINS` en Auth y Catálogo. En local, el valor por defecto es `http://localhost:3000,http://localhost:5173`.
+
+Si el frontend se sirve desde otro dominio, actualiza esa variable y reconstruye el frontend con las URLs públicas correctas.
+
+Para una guía paso a paso con Postman consulta [POSTMAN_GUIDE.md](./POSTMAN_GUIDE.md).

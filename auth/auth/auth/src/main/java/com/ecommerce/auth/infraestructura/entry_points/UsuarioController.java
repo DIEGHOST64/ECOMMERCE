@@ -1,90 +1,86 @@
 package com.ecommerce.auth.infraestructura.entry_points;
 
-import com.ecommerce.auth.aplicacion.config.LoginRequestDTO;
-import com.ecommerce.auth.aplicacion.config.LoginResponseDTO;
-import com.ecommerce.auth.domain.model.Usuario;
-import com.ecommerce.auth.domain.usecase.UsuarioUseCase;
-import com.ecommerce.auth.infraestructura.driver_adapters.jpa_repository.UsuarioData;
-import com.ecommerce.auth.infraestructura.mapper.MapperUsuario;
+import com.ecommerce.auth.application.port.in.UsuarioService;
+import com.ecommerce.auth.infraestructura.entry_points.dto.ActualizarUsuarioRequest;
+import com.ecommerce.auth.infraestructura.entry_points.dto.LoginRequest;
+import com.ecommerce.auth.infraestructura.entry_points.dto.LoginResponse;
+import com.ecommerce.auth.infraestructura.entry_points.dto.RegistroUsuarioRequest;
+import com.ecommerce.auth.infraestructura.entry_points.dto.UsuarioResponse;
+import com.ecommerce.auth.infraestructura.entry_points.mapper.UsuarioDtoMapper;
+import com.ecommerce.auth.infraestructura.security.AuthenticatedUser;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/ecommerce/usuario")
 @RequiredArgsConstructor
 public class UsuarioController {
 
-    private final UsuarioUseCase usuarioUseCase;
-    private final MapperUsuario mapperUsuario;
+    private final UsuarioService usuarioService;
+    private final UsuarioDtoMapper mapper;
 
     @PostMapping("/save")
-    public ResponseEntity<Usuario> saveUsuario(@RequestBody UsuarioData usuarioData) {
-        Usuario usuario = mapperUsuario.toUsuario(usuarioData);
-        Usuario usuarioValidadoGuardado = usuarioUseCase.guardarUsuario(usuario);
-
-        if(usuarioValidadoGuardado.getId() != null){
-            return new ResponseEntity<>(usuarioValidadoGuardado, HttpStatus.OK);
-        }
-        return new ResponseEntity<>(usuarioValidadoGuardado, HttpStatus.CONFLICT);
+    @ResponseStatus(HttpStatus.CREATED)
+    public UsuarioResponse save(@Valid @RequestBody RegistroUsuarioRequest request) {
+        return mapper.toResponse(usuarioService.registrar(mapper.toDomain(request)));
     }
 
-    // ⭐ NUEVO ENDPOINT DE LOGIN
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequest) {
-        try {
-            Usuario usuario = usuarioUseCase.login(loginRequest.getEmail(), loginRequest.getPassword());
-
-            LoginResponseDTO response = new LoginResponseDTO();
-            response.setId(usuario.getId());
-            response.setEmail(usuario.getEmail());
-            response.setNombre(usuario.getNombre());
-            response.setRole(usuario.getRole());
-            response.setMensaje("Login exitoso");
-
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            LoginResponseDTO response = new LoginResponseDTO();
-            response.setMensaje(e.getMessage());
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
-        }
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return mapper.toLoginResponse(
+                usuarioService.login(request.email(), request.password()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Usuario> findByIdusuario(@PathVariable Long id){
-        Usuario usuarioValidadoGuardado = usuarioUseCase.buscarPorIdUsuario(id);
-        if (usuarioValidadoGuardado != null){
-            return new ResponseEntity<>(usuarioValidadoGuardado, HttpStatus.OK);
-        }
-        return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    public UsuarioResponse findById(@PathVariable Long id,
+                                    @AuthenticationPrincipal AuthenticatedUser actual) {
+        asegurarPropietarioOAdmin(actual, id);
+        return mapper.toResponse(usuarioService.buscarPorId(id));
     }
 
-        // Endpoint para verificar si el usuario existe (para microservicio catálogo)
-        @GetMapping("/{id}/existe")
-        public ResponseEntity<Boolean> usuarioExiste(@PathVariable Long id) {
-            boolean existe = usuarioUseCase.buscarPorIdUsuario(id) != null;
-            return ResponseEntity.ok(existe);
-        }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteUsuario(@PathVariable Long id) {
-        usuarioUseCase.eliminarPorIdUsuario(id);
-        return new ResponseEntity<>(HttpStatus.OK);
+    /**
+     * Endpoint interno usado por el servicio de catalogo para validar usuarios.
+     * No expone datos personales, solo existencia.
+     */
+    @GetMapping("/{id}/existe")
+    public boolean usuarioExiste(@PathVariable Long id) {
+        return usuarioService.existePorId(id);
     }
 
     @PutMapping("/update")
-    public ResponseEntity<Usuario> updateUsuario(@RequestBody UsuarioData usuarioData) {
-        try{
-            // Validar que el ID venga
-            if (usuarioData.getId() == null) {
-                return ResponseEntity.badRequest().build();
-            }
-            Usuario usuario = mapperUsuario.toUsuario(usuarioData);
-            Usuario usuarioValidadoActualizado = usuarioUseCase.actualizarUsuario(usuario);
-            return new ResponseEntity<>(usuarioValidadoActualizado, HttpStatus.OK);
-        }catch (Exception error) {
-            return ResponseEntity.notFound().build();
+    public UsuarioResponse update(@Valid @RequestBody ActualizarUsuarioRequest request,
+                                  @AuthenticationPrincipal AuthenticatedUser actual) {
+        asegurarPropietarioOAdmin(actual, request.id());
+        return mapper.toResponse(usuarioService.actualizar(mapper.toDomain(request)));
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("hasRole('ADMIN')")
+    public void deleteUsuario(@PathVariable Long id) {
+        usuarioService.eliminarPorId(id);
+    }
+
+    private void asegurarPropietarioOAdmin(AuthenticatedUser actual, Long id) {
+        if (actual == null) {
+            throw new AccessDeniedException("No autenticado");
+        }
+        boolean esAdmin = "ADMIN".equalsIgnoreCase(actual.role());
+        if (!esAdmin && !actual.id().equals(id)) {
+            throw new AccessDeniedException("Solo puedes acceder a tus propios datos");
         }
     }
 }

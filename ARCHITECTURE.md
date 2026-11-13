@@ -1,318 +1,291 @@
-# 🏗️ Arquitectura del Sistema E-Commerce
+# Arquitectura
 
-## Diagrama de Arquitectura
+Documento técnico de la plataforma. Para el inicio rápido consulta [README.md](./README.md); para los endpoints, [API.md](./API.md); para el despliegue, [DEPLOYMENT.md](./DEPLOYMENT.md).
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                          FRONTEND (React)                        │
-│                      http://localhost:3000                       │
-│                                                                  │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐          │
-│  │  Login/  │ │ Product  │ │  Cart    │ │  Orders  │          │
-│  │ Register │ │   List   │ │          │ │          │          │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘          │
-│                                                                  │
-│                    ▼ HTTP/REST (Axios)                          │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-                ┌─────────────┴──────────────┐
-                │                            │
-                ▼                            ▼
-┌──────────────────────────┐   ┌──────────────────────────┐
-│   AUTH MICROSERVICE      │   │  CATALOGO MICROSERVICE   │
-│   Port: 9090             │   │   Port: 9092             │
-├──────────────────────────┤   ├──────────────────────────┤
-│                          │   │                          │
-│  ┌────────────────────┐  │   │  ┌────────────────────┐  │
-│  │  Controllers       │  │   │  │  Controllers       │  │
-│  │  - AuthController  │  │   │  │  - ProductCtrl     │  │
-│  │  - UserController  │  │   │  │  - CategoryCtrl    │  │
-│  └────────────────────┘  │   │  │  - CartCtrl        │  │
-│           │              │   │  │  - OrderCtrl       │  │
-│           ▼              │   │  └────────────────────┘  │
-│  ┌────────────────────┐  │   │           │              │
-│  │  Application       │  │   │           ▼              │
-│  │  (Use Cases)       │  │   │  ┌────────────────────┐  │
-│  │  - RegisterUser    │  │   │  │  Application       │  │
-│  │  - LoginUser       │  │   │  │  (Use Cases)       │  │
-│  │  - ValidateToken   │  │   │  │  - ManageProducts  │  │
-│  └────────────────────┘  │   │  │  - ManageCart      │  │
-│           │              │   │  │  - CreateOrder     │  │
-│           ▼              │   │  └────────────────────┘  │
-│  ┌────────────────────┐  │   │           │              │
-│  │  Domain            │  │   │           ▼              │
-│  │  (Entities)        │  │   │  ┌────────────────────┐  │
-│  │  - Usuario         │  │   │  │  Domain            │  │
-│  │  - Rol             │  │   │  │  (Entities)        │  │
-│  └────────────────────┘  │   │  │  - Producto        │  │
-│           │              │   │  │  - Categoria       │  │
-│           ▼              │   │  │  - Carrito         │  │
-│  ┌────────────────────┐  │   │  │  - Pedido          │  │
-│  │  Infrastructure    │  │   │  └────────────────────┘  │
-│  │  - Repositories    │  │   │           │              │
-│  │  - Security        │  │   │           ▼              │
-│  │  - Config          │  │   │  ┌────────────────────┐  │
-│  └────────────────────┘  │   │  │  Infrastructure    │  │
-│           │              │   │  │  - Repositories    │  │
-└───────────┼──────────────┘   │  │  - SQS Producer    │◄─┐
-            │                  │  │  - Config          │  │
-            ▼                  │  └────────────────────┘  │
-   ┌────────────────┐          │           │              │
-   │   PostgreSQL   │          └───────────┼──────────────┘
-   │  ecommerce_auth│                      │
-   │   Port: 5432   │                      ▼
-   └────────────────┘             ┌────────────────┐
-                                  │   PostgreSQL   │
-                                  │   ecommerce    │
-                                  │   Port: 5432   │
-                                  └────────────────┘
-                                           
-                                           
-            ┌──────── AWS SQS Queue ◄──────┘
-            │      (Async Messages)
-            │
-            ▼
-┌──────────────────────────────────┐
-│  NOTIFICACIONES MICROSERVICE     │
-│       Port: 9093                 │
-├──────────────────────────────────┤
-│                                  │
-│  ┌────────────────────────────┐  │
-│  │  SQS Consumer              │  │
-│  │  (Polling Messages)        │  │
-│  └────────────────────────────┘  │
-│              │                   │
-│              ▼                   │
-│  ┌────────────────────────────┐  │
-│  │  Notification Service      │  │
-│  │  - Email Handler (AWS SES) │  │───► AWS SES
-│  │  - SMS Handler (Twilio)    │  │───► Twilio API
-│  └────────────────────────────┘  │
-│                                  │
-└──────────────────────────────────┘
+## 1. Vista general
+
+La plataforma es un conjunto de microservicios Spring Boot con un frontend React. Todo el stack es open source y se ejecuta con Docker Compose.
+
+| Componente | Tecnología | Puerto |
+| --- | --- | --- |
+| Frontend | React 18 + nginx | 3000 |
+| Auth API | Spring Boot 3.5 / Java 17 | 9090 |
+| Catálogo API | Spring Boot 3.5 / Java 17 | 9092 |
+| Notificaciones | Spring Boot 3.5 / Java 17 | 9093 |
+| PostgreSQL | PostgreSQL 16 | 5432 |
+| RabbitMQ | RabbitMQ 3.13 (management) | 5672 / 15672 |
+| SMTP de desarrollo | Mailpit | 1025 / 8025 |
+
+```text
+                         Navegador
+                             |
+                             v
+                 Frontend React (nginx :3000)
+                    |                    |
+          REST + JWT |                    | REST + JWT
+                    v                    v
+             Auth API :9090       Catálogo API :9092
+                    |   \                |   \
+                    |    \               |    \--> Auth API (valida usuario,
+                    |     \              |          reenviando el JWT)
+                    |      \             |
+                    v       v            v
+              PostgreSQL   RabbitMQ   PostgreSQL
+             (usuario)   exchange    (products, carrito,
+                          |           item_carrito, compras)
+                          v
+                 Notificaciones :9093
+                    |            |
+                    v            v
+              SMTP (Mailpit)   SMS webhook / log
 ```
 
-## 📦 Componentes del Sistema
+## 2. Clean Architecture
 
-### 1. Frontend (React - Puerto 3000)
+Cada servicio backend aplica la regla de dependencia: las capas externas conocen a las internas, nunca al contrario.
 
-**Responsabilidades:**
-- Interfaz de usuario
-- Gestión de estado local
-- Comunicación con APIs backend
-- Navegación entre páginas
-
-**Tecnologías:**
-- React 18
-- React Router DOM
-- Axios (HTTP client)
-- React Icons
-
-**Componentes Principales:**
-- `Login/Register`: Autenticación de usuarios
-- `ProductList`: Catálogo de productos
-- `Cart`: Carrito de compras
-- `Orders`: Historial de pedidos
-- `AdminPanel`: Panel de administración
-
-### 2. Auth Microservice (Puerto 9090)
-
-**Responsabilidades:**
-- Registro y autenticación de usuarios
-- Gestión de sesiones
-- Autorización y roles
-- Validación de tokens JWT
-
-**Tecnologías:**
-- Spring Boot 3.5.5
-- Spring Security
-- Spring Data JPA
-- PostgreSQL
-
-**Arquitectura:**
-- **Controllers**: Manejo de peticiones HTTP
-- **Application**: Casos de uso (lógica de negocio)
-- **Domain**: Entidades y reglas de negocio
-- **Infrastructure**: Repositorios, configuración, seguridad
-
-**Base de Datos:** `ecommerce_auth`
-
-### 3. Catálogo Microservice (Puerto 9092)
-
-**Responsabilidades:**
-- Gestión de productos y categorías
-- Carrito de compras
-- Creación y seguimiento de pedidos
-- Envío de notificaciones asíncronas (SQS)
-
-**Tecnologías:**
-- Spring Boot 3.5.7
-- Spring Data JPA
-- PostgreSQL
-- AWS SDK (SQS)
-
-**Arquitectura:**
-- **Controllers**: Endpoints REST
-- **Application**: Lógica de negocio
-- **Domain**: Modelos de datos
-- **Infrastructure**: Persistencia, mensajería
-
-**Base de Datos:** `ecommerce`
-
-### 4. Notificaciones Microservice (Puerto 9093)
-
-**Responsabilidades:**
-- Consumir mensajes de SQS
-- Enviar correos electrónicos (AWS SES)
-- Enviar SMS (Twilio)
-- Procesamiento asíncrono de notificaciones
-
-**Tecnologías:**
-- Spring Boot 3.5.5
-- AWS SDK (SQS, SES)
-- Twilio API
-
-**Patrón:**
-- Consumer asíncrono (polling de SQS)
-- Sin base de datos propia
-
-## 🔄 Flujo de Datos
-
-### Registro de Usuario
-
-```
-1. Usuario completa formulario de registro en Frontend
-2. Frontend → POST /api/auth/register → Auth Service
-3. Auth Service valida datos
-4. Auth Service guarda usuario en BD (ecommerce_auth)
-5. Auth Service → Response (usuario creado) → Frontend
-6. Frontend redirige a login
+```text
+servicio/src/main/java/com/ecommerce/<servicio>/
+├── domain/
+│   ├── model/          Entidades y objetos de valor
+│   ├── port/in/        Casos de uso (interfaces)
+│   ├── port/out/       Puertos hacia infraestructura
+│   └── exception/      Excepciones de negocio
+├── application/
+│   └── usecase/        Implementación de los casos de uso
+└── infraestructura/
+    ├── config/         Spring, seguridad, RabbitMQ, wiring
+    ├── entry_points/   Controllers REST + DTOs + mappers
+    ├── driver_adapters/JPA, SMTP, SMS, clientes HTTP
+    ├── messaging/      Productores/consumidores RabbitMQ
+    ├── security/       Filtro y servicio JWT
+    └── mapper/         Traducción dominio <-> persistencia
 ```
 
-### Compra de Producto
+Reglas:
 
-```
-1. Usuario selecciona producto → Frontend
-2. Frontend → POST /api/carrito/{userId}/items → Catálogo Service
-3. Catálogo Service agrega item al carrito (BD: ecommerce)
-4. Usuario confirma compra
-5. Frontend → POST /api/pedidos/{userId} → Catálogo Service
-6. Catálogo Service:
-   a. Crea pedido en BD
-   b. Reduce stock de productos
-   c. Vacía el carrito
-   d. Envía mensaje a SQS (confirmación de pedido)
-7. Notificaciones Service:
-   a. Recibe mensaje de SQS
-   b. Envía email de confirmación (AWS SES)
-   c. Envía SMS de confirmación (Twilio)
-8. Frontend muestra confirmación al usuario
-```
+- `domain` no importa Spring, JPA, Jackson ni RabbitMQ. Solo Java y sus propios tipos.
+- `application` implementa los puertos de entrada y depende de los puertos de salida. No conoce controllers, JPA ni SMTP.
+- `infraestructura` implementa los puertos de salida y adapta las peticiones HTTP a los casos de uso.
+- El wiring se concentra en `infraestructura/config` (`UseCaseConfig`), de modo que los casos de uso se construyen con `new` y no con anotaciones de Spring.
+- La capa `application` usa `@Transactional` para delimitar transacciones de persistencia; es la única dependencia de framework en esa capa y no filtra tipos de Spring al dominio.
 
-## 🗄️ Base de Datos
+## 3. Servicios
 
-### ecommerce_auth (Auth Service)
+### 3.1 Auth (`auth/auth/auth`)
 
-**Tablas:**
-- `usuarios`: id, username, email, password_hash, nombre, telefono, rol, fecha_creacion
-- `roles`: id, nombre (USER, ADMIN)
+Responsabilidades:
 
-### ecommerce (Catálogo Service)
+- Registrar usuarios con contraseña hasheada (BCrypt).
+- Autenticar por email y contraseña.
+- Emitir JWT firmados con HMAC-SHA256.
+- Gestionar el perfil del usuario autenticado.
+- Publicar notificaciones de bienvenida/registro en RabbitMQ.
 
-**Tablas:**
-- `productos`: id, nombre, descripcion, precio, stock, imagen_url, categoria_id
-- `categorias`: id, nombre, descripcion
-- `carritos`: id, usuario_id, fecha_creacion
-- `carrito_items`: id, carrito_id, producto_id, cantidad, precio_unitario
-- `pedidos`: id, usuario_id, total, estado, fecha_creacion, direccion_envio, metodo_pago
-- `pedido_items`: id, pedido_id, producto_id, cantidad, precio_unitario
+Reglas:
 
-## 🔐 Seguridad
+- El rol siempre se fuerza a `USER` en el registro. El rol `ADMIN` se asigna por base de datos.
+- El login devuelve los campos planos que consume el frontend (`id`, `email`, `nombre`, `role`) más `token`, `tokenType`, `expiraEnSegundos` y `mensaje`.
+- El JWT incluye `sub` (id), `email`, `nombre`, `role`, `iat` y `exp`.
+- `JWT_SECRET` debe tener al menos 32 caracteres; el servicio falla al arrancar si no se cumple.
 
-### Autenticación
-- JWT (JSON Web Tokens) para sesiones
-- Tokens generados por Auth Service
-- Validación en cada microservicio
+### 3.2 Catálogo (`catalogo/catalogo`)
 
-### Autorización
-- Roles: `USER`, `ADMIN`
-- Endpoints protegidos según rol
-- CORS configurado para permitir Frontend
+Responsabilidades:
 
-### Seguridad de Datos
-- Contraseñas hasheadas (BCrypt)
-- Variables de entorno para credenciales (.env)
-- HTTPS en producción (recomendado)
+- CRUD de productos.
+- Carrito por usuario.
+- Checkout y historial de compras.
+- Publicación de la confirmación de compra en RabbitMQ.
 
-## 📨 Comunicación entre Servicios
+Reglas:
 
-### Síncrona (REST)
-- Frontend ↔ Auth Service
-- Frontend ↔ Catálogo Service
+- Las lecturas de productos (`GET /api/ecommerce/producto/**`) son públicas.
+- Las escrituras de productos requieren rol `ADMIN`.
+- El carrito y las compras requieren JWT. El `usuarioId` se obtiene del token, nunca de la URL o del query string.
+- El carrito **no reserva stock**. El stock se valida y descuenta de forma atómica en el checkout.
+- Para validar los datos del usuario, el servicio llama a Auth reenviando el JWT del solicitante.
 
-### Asíncrona (Mensajería)
-- Catálogo Service → SQS → Notificaciones Service
+### 3.3 Notificaciones (`notificaciones`)
 
-**Ventajas del patrón asíncrono:**
-- Desacoplamiento de servicios
-- Resiliencia ante fallos
-- Escalabilidad independiente
-- No bloquea la respuesta al usuario
+Responsabilidades:
 
-## 🚀 Escalabilidad
+- Consumir mensajes de RabbitMQ.
+- Enviar correos por SMTP.
+- Enviar SMS mediante un webhook HTTP configurable o escribir el SMS en el log.
+- Reintentar fallos y derivar los mensajes agotados a una DLQ.
 
-### Horizontal Scaling
-Cada microservicio puede escalar independientemente:
-- **Auth**: Añadir instancias si hay muchos registros/logins
-- **Catálogo**: Escalar para manejar más pedidos
-- **Notificaciones**: Múltiples consumers de SQS
+No expone endpoints de negocio; solo `GET /actuator/health` para el healthcheck. No tiene base de datos propia.
 
-### Load Balancing (Producción)
-```
-         ┌──────────┐
-         │  Nginx   │ ← Load Balancer
-         └────┬─────┘
-              │
-    ┌─────────┼──────────┐
-    ▼         ▼          ▼
-  Auth-1   Auth-2    Auth-3
+### 3.4 Frontend (`frontend`)
+
+Responsabilidades:
+
+- Interfaz de login, registro, productos, carrito, compras y panel de administración.
+- Guardar la sesión JWT en `localStorage` bajo `ecommerce.session`.
+- Adjuntar `Authorization: Bearer <token>` en cada llamada protegida.
+- Detectar expiración o rechazo del token y cerrar la sesión.
+- Normalizar los roles del backend (`ADMIN`, `ROLE_ADMIN`, `CLIENTE`, `USER`) a `ADMIN` o `USER`.
+
+Los clientes HTTP viven en `src/api/` y la sesión en `src/session.js`. No hay URLs ni roles hardcodeados en los componentes.
+
+## 4. Flujos
+
+### 4.1 Registro
+
+```text
+Frontend -> POST /api/ecommerce/usuario/save -> Auth
+Auth valida, hashea la contraseña y guarda el usuario
+Auth publica notificación de bienvenida en RabbitMQ
+Frontend redirige al login
 ```
 
-## 🔧 Patrones de Diseño Utilizados
+### 4.2 Login y autorización
 
-1. **Clean Architecture**: Separación de capas (Domain, Application, Infrastructure)
-2. **Repository Pattern**: Abstracción de acceso a datos
-3. **DTO Pattern**: Transferencia de datos entre capas
-4. **Publisher-Subscriber**: Mensajería asíncrona con SQS
-5. **Service Layer**: Lógica de negocio encapsulada
-6. **Dependency Injection**: Inyección de dependencias con Spring
+```text
+Frontend -> POST /api/ecommerce/usuario/login -> Auth
+Auth verifica BCrypt y emite un JWT
+Frontend guarda token + usuario + expiración
+Cada petición protegida envía Authorization: Bearer <token>
+Auth y Catálogo validan la firma y la expiración con el mismo JWT_SECRET
+```
 
-## 📊 Tecnologías del Stack
+### 4.3 Carrito
 
-| Componente | Tecnología | Versión |
-|-----------|-----------|---------|
-| Frontend | React | 18.2.0 |
-| Backend | Spring Boot | 3.5.x |
-| Lenguaje | Java | 17 |
-| Base de Datos | PostgreSQL | 12+ |
-| Mensajería | AWS SQS | SDK 2.20.26 |
-| Email | AWS SES | SDK 2.20.26 |
-| SMS | Twilio | 9.14.1 |
-| Build Tool | Maven | 3.6+ |
-| Package Manager | npm | 8+ |
+```text
+Frontend -> POST /api/ecommerce/carrito/agregar -> Catálogo
+Catálogo toma el usuario del JWT y agrega el ítem
+El carrito guarda precio unitario, cantidad, subtotal e imagen
+No se modifica el stock
+```
 
-## 🎯 Próximos Pasos / Roadmap
+### 4.4 Checkout
 
-- [ ] Implementar API Gateway (Spring Cloud Gateway)
-- [ ] Agregar Service Discovery (Eureka)
-- [ ] Implementar Circuit Breaker (Resilience4j)
-- [ ] Agregar monitoreo (Prometheus + Grafana)
-- [ ] Implementar logs centralizados (ELK Stack)
-- [ ] Containerización (Docker + Kubernetes)
-- [ ] CI/CD Pipeline (GitHub Actions)
-- [ ] Tests de integración
-- [ ] Documentación Swagger/OpenAPI
+```text
+Frontend -> POST /api/ecommerce/compras/realizar -> Catálogo
+1. Catálogo valida el usuario contra Auth
+2. Lee el carrito del usuario
+3. Descuenta el stock de cada producto de forma atómica
+   (si un producto no tiene stock, toda la transacción revierte)
+4. Guarda la compra con el estado COMPLETADA
+5. Elimina el carrito
+6. Tras el commit, publica la notificación en RabbitMQ
+7. Devuelve la compra al frontend
+```
 
----
+La notificación se publica **después del commit** para no avisar de una compra que finalmente no se guardó. Si RabbitMQ falla, la compra sigue siendo válida y solo se registra una advertencia en el log.
 
-Para más detalles técnicos, consulta `README.md`, `API.md` y `DEPENDENCIES.md`.
+### 4.5 Notificación de compra
+
+```text
+Catálogo -> exchange notificaciones.exchange
+          -> routing key notificacion.ambos
+          -> cola notificaciones.queue
+          -> Notificaciones
+             ├── SMTP -> Mailpit (desarrollo) o servidor SMTP real
+             └── SMS  -> webhook HTTP o log
+```
+
+## 5. Mensajería
+
+Topología declarada por Notificaciones:
+
+| Elemento | Nombre por defecto |
+| --- | --- |
+| Exchange | `notificaciones.exchange` (topic, durable) |
+| Cola | `notificaciones.queue` (durable) |
+| Routing key email | `notificacion.email` |
+| Routing key SMS | `notificacion.sms` |
+| Routing key ambos | `notificacion.ambos` |
+| Dead letter exchange | `notificaciones.dlx` (direct) |
+| Dead letter queue | `notificaciones.dlq` |
+
+Contrato JSON:
+
+```json
+{
+  "tipo": "AMBOS",
+  "email": {
+    "destinatario": "usuario@ejemplo.com",
+    "asunto": "Confirmacion de Compra #12",
+    "cuerpo": "<h1>Compra confirmada</h1>",
+    "html": true
+  },
+  "sms": {
+    "numeroTelefono": "+573001234567",
+    "mensaje": "Tu compra #12 ha sido confirmada."
+  }
+}
+```
+
+- `tipo` es `EMAIL`, `SMS` o `AMBOS`.
+- El productor solo declara el exchange; la cola, el DLX y la DLQ pertenecen a Notificaciones.
+- Reintentos: 3 intentos con backoff exponencial (1 s, 2 s, 4 s; máximo 10 s).
+- Si se agotan los reintentos, el mensaje va a `notificaciones.dlq`.
+- El consumidor ignora el header `__TypeId__` de otros servicios y usa el tipo inferido del listener, por lo que los servicios no comparten clases Java.
+
+## 6. Persistencia
+
+Se usa una única base de datos PostgreSQL (`ecommerce`) compartida por Auth y Catálogo. Cada servicio es dueño de sus tablas y no accede a las del otro.
+
+| Tabla | Servicio | Contenido |
+| --- | --- | --- |
+| `usuario` | Auth | id, nombre, email único, password BCrypt, teléfono, rol, edad |
+| `products` | Catálogo | id, nombre, descripción, precio, stock, imagenUrl |
+| `carrito` | Catálogo | id, usuario_id único, precio_total |
+| `item_carrito` | Catálogo | líneas de carrito (`id_carrito`) y de compra (`compra_id`) |
+| `compras` | Catálogo | id, usuario_id, fecha_compra, total, estado |
+
+`spring.jpa.hibernate.ddl-auto` es configurable (`JPA_DDL_AUTO`, por defecto `update`). Para producción se recomienda usar migraciones (Flyway o Liquibase) y `validate`.
+
+## 7. Seguridad
+
+- Contraseñas con BCrypt; nunca se devuelven en las respuestas.
+- JWT firmado con HMAC-SHA256; expiración configurable (`JWT_EXPIRATION_MINUTES`, 24 h por defecto).
+- Auth y Catálogo comparten `JWT_SECRET`. Si los secretos no coinciden, Catálogo rechaza todos los tokens.
+- Roles `USER` y `ADMIN`; las anotaciones `@PreAuthorize` protegen las operaciones de administración.
+- El catálogo no acepta `X-User-Role` ni `usuarioId` del cliente: la identidad sale del JWT.
+- Las operaciones sobre datos personales y compras verifican propietario o rol `ADMIN`.
+- CORS restringido por `CORS_ALLOWED_ORIGINS`.
+- Los secretos viven en `.env` (ignorado por Git). Los `.env.example` solo contienen marcadores.
+- RabbitMQ usa un usuario distinto de `guest`; `guest` solo puede conectarse desde loopback.
+
+## 8. Pruebas
+
+| Suite | Cantidad |
+| --- | --- |
+| Auth | 19 |
+| Catálogo | 20 |
+| Notificaciones | 16 |
+| Frontend | 12 |
+
+Cobertura funcional:
+
+- Auth: casos de uso, login/registro reales con H2, seguridad y validación.
+- Catálogo: casos de uso de producto, carrito y compra; integración REST con H2 y JWT.
+- Notificaciones: caso de uso, adaptador SMTP, adaptador SMS y listener RabbitMQ.
+- Frontend: sesión JWT, normalización de roles y cliente HTTP (errores, timeout, 401).
+
+Comandos en [README.md](./README.md#pruebas) y en el workflow `.github/workflows/ci.yml`.
+
+## 9. Decisiones y límites
+
+- **Docker Compose** es el runtime soportado. No se mantienen configuraciones de Netlify/Render/GitHub Pages.
+- **RabbitMQ** sustituye a SQS. El modo de entrega es al menos una vez; los consumidores deben ser idempotentes.
+- **SMTP** sustituye a SES. Mailpit permite inspeccionar los correos en desarrollo.
+- **SMS por webhook/log** sustituye a Twilio. Cualquier gateway HTTP (Jasmin, Kannel, un gateway Android) puede implementar el contrato.
+- **Base de datos compartida**: simplifica el despliegue local, pero acopla el esquema. Si los servicios evolucionan por separado, conviene separar bases o adoptar migraciones por servicio.
+- **Sin API Gateway ni service discovery**: el frontend conoce las dos URLs y Catálogo conoce la URL de Auth por configuración.
+- **Sin reserva de stock en el carrito**: evita bloqueos de inventario; el checkout es la única operación que descuenta.
+- **JWT sin refresh token**: al expirar, el usuario vuelve a iniciar sesión.
+
+## 10. Roadmap
+
+- Migraciones de esquema con Flyway/Liquibase.
+- Refresh tokens y revocación.
+- API Gateway y rate limiting.
+- Circuit breaker entre Catálogo y Auth.
+- Métricas con Prometheus/Grafana y trazas con OpenTelemetry.
+- Idempotencia explícita en el consumidor de notificaciones.
+- Tests end-to-end del flujo completo con Docker Compose.
+- Documentación OpenAPI generada desde los controllers.

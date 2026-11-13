@@ -1,24 +1,23 @@
 package com.ecommerce.auth.infraestructura.driver_adapters.jpa_repository;
 
+import com.ecommerce.auth.domain.exception.UsuarioNoEncontradoException;
 import com.ecommerce.auth.domain.model.Usuario;
-import com.ecommerce.auth.domain.model.gateway.UsuarioGateway;
+import com.ecommerce.auth.domain.port.out.UsuarioGateway;
 import com.ecommerce.auth.infraestructura.mapper.MapperUsuario;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Repository;
-import org.modelmapper.ModelMapper;
 
-@Repository // Consultas a la BD
+@Repository
 @RequiredArgsConstructor
 public class UsuarioDataGatewayImpl implements UsuarioGateway {
 
     private final MapperUsuario mapperUsuario;
     private final UsuarioDataJpaRepository repository;
-    private final ModelMapper modelMapper; // ✅ Inyectado desde MapperConfig (@Bean)
 
     @Override
     public Usuario guardar(Usuario usuario) {
-        UsuarioData usuarioData = mapperUsuario.toUsuarioData(usuario);
-        return mapperUsuario.toUsuario(repository.save(usuarioData));
+        UsuarioData data = mapperUsuario.toUsuarioData(usuario);
+        return mapperUsuario.toUsuario(repository.save(data));
     }
 
     @Override
@@ -27,31 +26,30 @@ public class UsuarioDataGatewayImpl implements UsuarioGateway {
     }
 
     @Override
-    public Usuario buscarPorID(Long id){
-        var usuarioData = repository.findById(id).get();
-        return mapperUsuario.toUsuario(usuarioData);
+    public Usuario buscarPorID(Long id) {
+        return repository.findById(id)
+                .map(mapperUsuario::toUsuario)
+                .orElse(null);
     }
 
     @Override
     public Usuario actualizarUsario(Usuario usuario) {
-        UsuarioData usuarioExistente = repository.findById(usuario.getId()).orElseThrow(() -> new RuntimeException("Usuario con id " + usuario.getId() + " no existe"));
+        UsuarioData existente = repository.findById(usuario.getId())
+                .orElseThrow(() -> new UsuarioNoEncontradoException(usuario.getId()));
 
-        UsuarioData usuarioNuevo = mapperUsuario.toUsuarioData(usuario);
+        existente.setNombre(usuario.getNombre());
+        existente.setEmail(usuario.getEmail());
+        existente.setPassword(usuario.getPassword());
+        existente.setTelefono(usuario.getTelefono());
+        existente.setRole(usuario.getRole());
+        existente.setEdad(usuario.getEdad());
 
-        modelMapper.map(usuarioNuevo, usuarioExistente);
-
-        if (usuario.getPassword() != null && usuario.getPassword().isEmpty()) {
-            UsuarioData original = repository.findById(usuario.getId()).get();
-            usuarioExistente.setPassword(original.getPassword());
-        }
-
-        return mapperUsuario.toUsuario(repository.save(usuarioExistente));
+        return mapperUsuario.toUsuario(repository.save(existente));
     }
 
-    //para login
     @Override
     public Usuario buscarPorEmail(String email) {
-        return repository.findByEmail(email)
+        return repository.findByEmailIgnoreCase(email)
                 .map(mapperUsuario::toUsuario)
                 .orElse(null);
     }

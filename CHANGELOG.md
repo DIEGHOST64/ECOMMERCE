@@ -1,233 +1,90 @@
-# ✅ Resumen de Cambios y Configuración
+# Changelog
 
-## 📅 Fecha: 4 de Diciembre de 2025
+Todos los cambios relevantes del proyecto. El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y el versionado [Semantic Versioning](https://semver.org/lang/es/).
 
-### 🎯 Tareas Completadas
+## [2.0.0] - 2026-11-12
 
-#### 1. ✅ Configuración de Base de Datos
-- ✔️ PostgreSQL configurado y funcionando
-- ✔️ Contraseña establecida: `postgres123`
-- ✔️ Base de datos `ecommerce` creada y funcionando
-- ✔️ Tablas existentes: carrito, compras, item_carrito, products, usuario
+Refactorización completa para eliminar AWS y Twilio, aplicar Clean Architecture y corregir los flujos que fallaban.
 
-#### 2. ✅ Configuración de Microservicios
-- ✔️ **Auth Service** (Puerto 9090):
-  - Conectado a PostgreSQL
-  - Endpoints de usuario y autenticación funcionando
-  - Base de datos: ecommerce
+### Añadido
 
-- ✔️ **Catálogo Service** (Puerto 9092):
-  - Conectado a PostgreSQL
-  - Gestión de productos, carrito y compras
-  - Base de datos: ecommerce
+- RabbitMQ como reemplazo de AWS SQS, con exchange topic, cola durable, reintentos y DLQ.
+- SMTP (Mailpit en desarrollo) como reemplazo de AWS SES.
+- Adaptador SMS por webhook HTTP y modo `log` como reemplazo de Twilio.
+- JWT real firmado con HMAC-SHA256 y validado con Spring Security en Auth y Catálogo.
+- Spring Boot Actuator y healthchecks de Docker en los tres servicios.
+- `docker-compose.yml` con PostgreSQL, RabbitMQ, Mailpit, los tres backends y el frontend.
+- Dockerfiles multi-stage para los tres servicios y el frontend, con usuario no root.
+- `nginx.conf` para el frontend con fallback de SPA, caché de estáticos y endpoint `/health`.
+- `.env.example` raíz y por servicio, sin secretos reales.
+- Workflow de GitHub Actions que ejecuta las tres suites Maven, las pruebas y el build del frontend, y valida Compose.
+- `run-local.ps1` para desarrollo local con Maven contra la infraestructura de Compose.
+- `stop.sh` y scripts de arranque multiplataforma.
+- Pruebas del frontend para sesión JWT, normalización de roles y cliente HTTP.
+- Documentación nueva: arquitectura, API, instalación, despliegue, dependencias, Postman y contribución.
 
-#### 3. ✅ Frontend React
-- ✔️ Dependencias instaladas (npm install completado)
-- ✔️ Aplicación corriendo en puerto 3000
-- ✔️ Conectado a los microservicios backend
-- ✔️ Configurado para despliegue en GitHub Pages/Netlify
+### Cambiado
 
-#### 4. ✅ Documentación Completa
+- Estructura de los tres servicios alineada con Clean Architecture: `domain`, `application` y `infraestructura`.
+- Puertos de entrada y salida explícitos (`port/in`, `port/out`) y wiring en `UseCaseConfig`.
+- Mappers explícitos en lugar de ModelMapper.
+- El frontend usa `fetch` mediante clientes centralizados (`src/api/client.js`, `authApi.js`, `catalogoApi.js`).
+- La sesión se guarda como un único objeto `ecommerce.session` con token, usuario y expiración.
+- El catálogo deriva la identidad del JWT; se eliminaron los parámetros `usuarioId` del carrito y las compras.
+- El checkout descuenta stock de forma atómica, guarda la compra, vacía el carrito y publica la notificación después del commit.
+- El carrito ya no reserva stock; solo el checkout lo descuenta.
+- Los scripts de arranque usan Docker Compose y rutas relativas.
+- El README, la guía de instalación y la guía de Postman reflejan el stack open source.
 
-**Archivos creados/actualizados:**
+### Corregido
 
-1. **POSTMAN_COLLECTION.json** 📦
-   - Colección completa de Postman
-   - Variables predefinidas (auth_url, catalogo_url, token, usuarioId)
-   - Todos los endpoints documentados
-   - Script automático para guardar token al hacer login
+- El login del frontend usaba URLs hardcodeadas y un contrato distinto al del backend.
+- El frontend enviaba `X-User-Role` y `usuarioId`, lo que permitía suplantar usuarios.
+- El registro permitía inyectar roles desde el cliente.
+- Los errores del backend se perdían en el frontend; ahora se muestran mensajes útiles.
+- El contador del carrito se desincronizaba entre componentes.
+- El checkout podía dejar stock negativo o compras sin guardar.
+- Los servicios no tenían healthchecks reales.
+- Las credenciales de AWS/Twilio estaban hardcodeadas en scripts `.bat`.
 
-2. **POSTMAN_GUIDE.md** 📖
-   - Guía paso a paso para usar Postman
-   - Flujo de prueba recomendado
-   - Tabla de todos los endpoints
-   - Solución de problemas comunes
-   - Tips y mejores prácticas
+### Eliminado
 
-3. **DEPLOYMENT.md** 🚀
-   - Guía completa de despliegue
-   - Instrucciones para GitHub Pages
-   - Instrucciones para Netlify
-   - Instrucciones para Render (Backend)
-   - Configuración de base de datos en la nube
-   - Checklist de despliegue
+- AWS SDK (SQS y SES), configuración de AWS y credenciales en scripts.
+- Twilio SDK y configuración de Twilio.
+- ModelMapper.
+- Axios en el frontend.
+- `gh-pages` y el despliegue en GitHub Pages.
+- `render.yaml`, `netlify.toml`, `DEPLOY_STEP_BY_STEP.md` y configuraciones de despliegue obsoletas.
+- `README_INICIO.md` y `refactor-to-clean.md`, reemplazados por documentación mantenida.
+- Logs de build versionados.
 
-4. **README.md** 📝
-   - Actualizado con enlaces rápidos
-   - Tabla de contenidos mejorada
-   - Enlaces a toda la documentación
+### Seguridad
 
-#### 5. ✅ Limpieza del Repositorio
-**Archivos eliminados:**
-- ❌ reset-postgres-password.bat
-- ❌ fix-database.bat
-- ❌ INSTRUCCIONES-CAMBIAR-PASSWORD.txt
-- ❌ cambiar-password-postgres.ps1
-- ❌ catalogo/catalogo/add-column.bat
-- ❌ add-imagen-column.sql
-- ❌ fix-imagen-column.sql
+- **Acción obligatoria:** las versiones anteriores del repositorio público contenían una clave de AWS IAM y un token de Twilio en el historial de Git. Rótalos o revócalos; considera esas credenciales comprometidas.
+- Los secretos ya no se versionan. `.env` está ignorado y los `.env.example` solo tienen marcadores.
+- `JWT_SECRET` debe tener al menos 32 caracteres y ser idéntico en Auth y Catálogo.
+- RabbitMQ usa un usuario distinto de `guest`.
+- El catálogo valida propiedad o rol `ADMIN` en usuarios, carrito y compras.
+- Las contraseñas usan BCrypt y nunca se devuelven en las respuestas.
 
-**Archivos mantenidos (necesarios):**
-- ✔️ start-auth.bat
-- ✔️ start-catalogo.bat
-- ✔️ start-notificaciones.bat
-- ✔️ setup.bat
-- ✔️ start-services.ps1
-- ✔️ stop-services.ps1
+### Pruebas
 
-#### 6. ✅ Git y GitHub
-- ✔️ Commits realizados con mensajes descriptivos
-- ✔️ Todo subido al repositorio: https://github.com/DIEGHOST64/ECOMMERCE
-- ✔️ Historial limpio y organizado
+- Auth: 19 tests.
+- Catálogo: 20 tests.
+- Notificaciones: 16 tests.
+- Frontend: 12 tests.
+- Build de producción del frontend sin warnings.
 
----
+### Migración desde 1.x
 
-## 📊 Estado Actual del Proyecto
+1. Rota las credenciales de AWS y Twilio.
+2. Crea un `.env` desde `.env.example` y define `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD` y `JWT_SECRET`.
+3. Ejecuta `docker compose up -d --build`.
+4. Actualiza el rol del primer administrador en PostgreSQL y vuelve a iniciar sesión.
+5. Purga el historial de Git con `git filter-repo` o BFG antes de publicar.
+6. Reemplaza cualquier integración externa que esperara `X-User-Role` o `usuarioId` por el JWT.
+7. Configura un SMTP real y un gateway SMS si vas a producción.
 
-### ✅ Funcionando Localmente
-- Auth Service: http://localhost:9090 ✅
-- Catálogo Service: http://localhost:9092 ✅
-- Frontend React: http://localhost:3000 ✅
-- PostgreSQL: localhost:5432 ✅
+## [1.0.0] - 2025-12-04
 
-### 📋 Endpoints Principales
-
-**Auth (9090):**
-- POST `/api/ecommerce/usuario/save` - Registrar usuario
-- POST `/api/ecommerce/usuario/login` - Login
-- GET `/api/ecommerce/usuario/{id}` - Obtener usuario
-
-**Productos (9092):**
-- GET `/api/ecommerce/producto` - Listar productos
-- POST `/api/ecommerce/producto` - Crear producto
-- PUT `/api/ecommerce/producto/{id}` - Actualizar producto
-- DELETE `/api/ecommerce/producto/{id}` - Eliminar producto
-
-**Carrito (9092):**
-- GET `/api/ecommerce/carrito?usuarioId={id}` - Ver carrito
-- POST `/api/ecommerce/carrito/agregar` - Agregar producto
-- PUT `/api/ecommerce/carrito/actualizar/{productoId}` - Actualizar cantidad
-- DELETE `/api/ecommerce/carrito/vaciar` - Vaciar carrito
-
-**Compras (9092):**
-- POST `/api/ecommerce/compras/realizar` - Realizar compra
-- GET `/api/ecommerce/compras/usuario/{usuarioId}` - Ver historial
-
----
-
-## 🚀 Próximos Pasos para Despliegue
-
-### Opción 1: Despliegue Completo Gratuito
-
-1. **Frontend en Netlify:**
-   ```bash
-   cd frontend
-   npm run build
-   netlify deploy --prod
-   ```
-
-2. **Backend en Render:**
-   - Crear cuenta en render.com
-   - Crear PostgreSQL database (Free)
-   - Desplegar Auth Service
-   - Desplegar Catálogo Service
-   - Configurar variables de entorno
-
-3. **Actualizar URLs en Frontend:**
-   - Cambiar URLs del backend a las de Render
-   - Rebuild y redeploy
-
-### Opción 2: GitHub Pages (Solo Frontend)
-
-```bash
-cd frontend
-npm install gh-pages --save-dev
-npm run deploy
-```
-
-Luego habilitar GitHub Pages en Settings → Pages
-
----
-
-## 📝 Configuración de Archivos Importantes
-
-### application.properties (Auth)
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce
-spring.datasource.username=postgres
-spring.datasource.password=postgres123
-```
-
-### application.properties (Catálogo)
-```properties
-spring.datasource.url=jdbc:postgresql://localhost:5432/ecommerce
-spring.datasource.username=postgres
-spring.datasource.password=postgres123
-auth.service.url=http://localhost:9090
-```
-
-### package.json (Frontend)
-```json
-{
-  "homepage": ".",
-  "scripts": {
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
-  }
-}
-```
-
----
-
-## 🔐 Seguridad
-
-**Configuración Actual (Desarrollo):**
-- Contraseña BD: postgres123
-- JWT Secret: configurado en application.properties
-- CORS: Habilitado para localhost:3000
-
-**Para Producción:**
-- ⚠️ Cambiar todas las contraseñas
-- ⚠️ Usar variables de entorno
-- ⚠️ Configurar CORS solo para dominios específicos
-- ⚠️ Habilitar HTTPS
-
----
-
-## 📚 Recursos y Enlaces
-
-- **Repositorio:** https://github.com/DIEGHOST64/ECOMMERCE
-- **Postman Collection:** `POSTMAN_COLLECTION.json`
-- **Documentación API:** `API.md`
-- **Guía de Despliegue:** `DEPLOYMENT.md`
-- **Guía de Postman:** `POSTMAN_GUIDE.md`
-
----
-
-## ✨ Tecnologías Utilizadas
-
-**Backend:**
-- Java 17
-- Spring Boot 3.5
-- PostgreSQL 18
-- Maven
-- Spring Data JPA
-
-**Frontend:**
-- React 18
-- React Router DOM
-- Axios
-- React Icons
-
-**DevOps:**
-- Git & GitHub
-- Postman (Testing)
-- Render/Netlify (Deployment)
-
----
-
-**Estado del Proyecto: ✅ COMPLETAMENTE FUNCIONAL Y LISTO PARA DESPLEGAR**
-
----
-
-*Última actualización: 4 de Diciembre de 2025*
+Versión inicial con microservicios Spring Boot, React, PostgreSQL, AWS SQS/SES y Twilio. Esta versión queda reemplazada por 2.0.0.

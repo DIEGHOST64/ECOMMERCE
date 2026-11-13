@@ -1,224 +1,138 @@
-# ✅ Checklist antes de Subir a GitHub
+# Checklist antes de publicar en GitHub
 
-Sigue esta lista para asegurarte de que tu proyecto está listo para ser compartido en GitHub.
+Repositorio: `https://github.com/DIEGHOST64/ECOMMERCE`
+Rama de trabajo: `refactor/open-source-clean-architecture`
 
-## 📋 Verificaciones Previas
+> **Advertencia de seguridad:** el historial público anterior contiene una clave de AWS IAM y un token de Twilio. El `HEAD` actual ya no los incluye, pero siguen en commits antiguos. Rótalos o revócalos y purga el historial antes de considerar el repositorio limpio.
 
-### 1. Archivos Sensibles
-- [ ] Verificar que **NO** hay archivos `.env` con credenciales reales
-- [ ] Confirmar que `.gitignore` incluye `*.env`
-- [ ] Verificar que `.env.example` está presente en cada servicio
-- [ ] Remover cualquier API key o contraseña en el código fuente
+## 1. Archivos sensibles
 
-### 2. Archivos de Configuración
-- [ ] `.gitignore` está configurado correctamente
-- [ ] Archivos `.env.example` están completos y documentados
-- [ ] `README.md` principal está actualizado
-- [ ] `LICENSE` está presente (si aplica)
+- [ ] No hay `.env` ni variantes (`*.env`, `.env.local`) en el staging.
+- [ ] `.gitignore` ignora `.env` y permite `!.env.example` y `!**/.env.example`.
+- [ ] Los `.env.example` solo contienen marcadores, nunca credenciales reales.
+- [ ] No hay claves de AWS, Twilio, SMTP ni JWT en scripts, propiedades, tests o documentación.
+- [ ] No hay logs de build, `target/`, `node_modules/` ni `frontend/build/` versionados.
 
-### 3. Documentación
-- [ ] `README.md` explica cómo instalar y ejecutar el proyecto
-- [ ] `INSTALL.md` tiene instrucciones paso a paso
-- [ ] `API.md` documenta los endpoints (si aplica)
-- [ ] `DEPENDENCIES.md` lista todas las dependencias
-- [ ] Comentarios importantes en el código están en español/inglés
+Comandos de verificación (PowerShell):
 
-### 4. Código
-- [ ] No hay código comentado innecesario
-- [ ] No hay `console.log()` o `System.out.println()` de debugging
-- [ ] No hay archivos de prueba temporales (test.js, prueba.java, etc.)
-- [ ] El código compila sin errores
+```powershell
+git status --short
+git ls-files | Select-String -Pattern '\.env$|\.env\.|build-.*\.log'
+git grep -n -E 'AKIA[0-9A-Z]{16}|TWILIO_AUTH_TOKEN=[A-Za-z0-9]{20,}|AWS_SECRET_ACCESS_KEY=[A-Za-z0-9+/]{20,}'
+```
 
-### 5. Dependencias
-- [ ] `pom.xml` de cada servicio está actualizado
-- [ ] `package.json` del frontend está actualizado
-- [ ] No hay dependencias sin usar
+Si alguna búsqueda devuelve resultados en archivos versionados, detente y elimínalos antes de continuar.
 
-### 6. Base de Datos
-- [ ] Scripts SQL están documentados (si aplica)
-- [ ] No hay credenciales hardcodeadas en los scripts
-- [ ] Instrucciones de creación de BD están en el README
+## 2. Calidad y pruebas
 
-## 🚀 Pasos para Subir a GitHub
+- [ ] `auth`: `mvnw clean verify` en verde (19 tests).
+- [ ] `catalogo`: `mvnw clean verify` en verde (20 tests).
+- [ ] `notificaciones`: `mvnw clean verify` en verde (16 tests).
+- [ ] Frontend: `npm test -- --watchAll=false` en verde (12 tests).
+- [ ] Frontend: `npm run build` compila sin warnings.
+- [ ] `docker compose config -q` es válido con un `.env` de ejemplo.
+- [ ] El workflow de CI pasa en la rama.
 
-### 1. Preparar el Repositorio Local
+## 3. Documentación
 
-```cmd
-cd "c:\Users\PC\Documents\Proyecto ECCOMERCE\Proyecto ECCOMERCE\Proyecto ECCOMERCE"
+- [ ] `README.md` describe el arranque con Docker y el stack open source.
+- [ ] `ARCHITECTURE.md` refleja las capas y la mensajería actuales.
+- [ ] `API.md` documenta los endpoints reales con JWT.
+- [ ] `INSTALL.md` cubre Docker y desarrollo local.
+- [ ] `DEPLOYMENT.md` cubre producción, TLS, backups y rotación de secretos.
+- [ ] `DEPENDENCIES.md` no menciona AWS, Twilio, Axios ni ModelMapper.
+- [ ] `POSTMAN_COLLECTION.json` es JSON válido y usa Bearer.
+- [ ] `CONTRIBUTING.md` apunta a `ECOMMERCE`, no a nombres antiguos.
+- [ ] `CHANGELOG.md` no contiene contraseñas ni secretos.
 
-# Verificar estado de Git
+## 4. Configuración del repositorio
+
+- [ ] `.gitignore` cubre Java, Node, IDEs, logs, bases locales y entornos.
+- [ ] `package-lock.json` está versionado.
+- [ ] `docker-compose.yml` usa variables de entorno y healthchecks.
+- [ ] Los Dockerfiles usan multi-stage y usuario no root.
+- [ ] `.github/workflows/ci.yml` está presente.
+- [ ] `LICENSE` está presente.
+
+## 5. Revisar el diff
+
+```powershell
+git diff --stat
+git diff --cached --stat
 git status
-
-# Ver qué archivos se subirán
-git add --dry-run .
 ```
 
-### 2. Revisar .gitignore
+Revisa especialmente:
 
-Asegúrate de que `.gitignore` incluye:
+- Archivos nuevos en `auth/`, `catalogo/`, `notificaciones/` y `frontend/src/`.
+- Cambios en `application.properties` y `.env.example`.
+- Eliminación de configuraciones de Netlify/Render/GitHub Pages.
+- Cualquier línea que parezca una credencial.
 
-```
-# Variables de entorno
-*.env
-!.env.example
+## 6. Commit y push
 
-# Compilados
-target/
-node_modules/
-build/
-dist/
+```powershell
+git add -A
+git commit -m "refactor: migrar a stack open source y Clean Architecture"
 
-# IDEs
-.idea/
-.vscode/
-*.iml
-
-# Base de datos local
-*.db
-*.sqlite
+git push -u origin refactor/open-source-clean-architecture
 ```
 
-### 3. Crear Commits Organizados
+Si el push falla por autenticación:
 
-```cmd
-# Inicializar Git (si no está inicializado)
-git init
+1. Instala GitHub CLI (`gh`) o configura un Personal Access Token con permiso `repo`.
+2. Autentica:
 
-# Agregar archivos por categorías
-git add README.md LICENSE .gitignore
-git commit -m "docs: add project documentation and configuration"
-
-git add pom.xml */pom.xml package.json
-git commit -m "build: add dependency configuration files"
-
-git add auth/ catalogo/ notificaciones/ frontend/
-git commit -m "feat: add microservices implementation"
-
-git add *.md
-git commit -m "docs: add comprehensive documentation"
+```powershell
+gh auth login
+# o
+git config --global credential.helper manager
 ```
 
-### 4. Crear Repositorio en GitHub
+3. Repite el push.
 
-1. Ve a https://github.com/new
-2. Nombre: `EECCOMERCE-802` (o el que prefieras)
-3. Descripción: `E-Commerce platform with microservices architecture`
-4. Visibilidad: Público o Privado
-5. **NO** inicialices con README (ya lo tienes)
-6. Click en "Create repository"
+No publiques la rama `main` hasta que el PR esté revisado y la CI en verde.
 
-### 5. Conectar y Subir
+## 7. Historial de Git
 
-```cmd
-# Agregar remote
-git remote add origin https://github.com/DIEGHOST64/EECCOMERCE-802.git
+Si el repositorio va a seguir público, purga los secretos del historial. **Rota las credenciales primero**; el purge no las invalida.
 
-# Renombrar rama a main (si es necesario)
-git branch -M main
+```bash
+# git filter-repo
+git filter-repo --replace-text replacements.txt
+git push --force --all
+git push --force --tags
 
-# Subir a GitHub
-git push -u origin main
+# BFG
+java -jar bfg.jar --replace-text replacements.txt
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+git push --force
 ```
 
-### 6. Verificar en GitHub
+`replacements.txt` debe contener los valores exactos a reemplazar por `REDACTED`. No lo subas al repositorio.
 
-- [ ] Todos los archivos están presentes
-- [ ] No hay archivos `.env` visibles
-- [ ] El README.md se muestra correctamente
-- [ ] Los archivos `.env.example` están presentes
+Después del force-push:
 
-## 🔒 Seguridad - Última Verificación
+- [ ] Los colaboradores vuelven a clonar o hacen `git fetch --all && git reset --hard origin/main`.
+- [ ] Se invalida cualquier fork o copia que conserve los commits antiguos.
+- [ ] Se revisan los logs de AWS CloudTrail y Twilio para detectar uso no autorizado.
 
-Ejecuta estos comandos para buscar posibles problemas:
+## 8. Después de publicar
 
-```cmd
-# Buscar archivos .env
-dir /s /b *.env
+- [ ] Descripción del repositorio: plataforma de e-commerce con microservicios Spring Boot, React, PostgreSQL y RabbitMQ.
+- [ ] Topics: `java`, `spring-boot`, `react`, `microservices`, `ecommerce`, `rabbitmq`, `postgresql`, `docker`, `clean-architecture`.
+- [ ] Issues habilitados.
+- [ ] Protección de la rama `main`: PR obligatorio y CI en verde.
+- [ ] Secret scanning y Dependabot habilitados.
+- [ ] Release `v2.0.0` con el resumen de `CHANGELOG.md`.
 
-# Buscar posibles API keys en el código
-findstr /s /i "api_key password secret token" *.java *.js *.properties
-```
+## 9. Errores comunes
 
-Si encuentras algo, **NO LO SUBAS** y elimínalo primero.
-
-## 📝 Después de Subir
-
-### 1. Configurar GitHub
-- [ ] Agregar descripción del repositorio
-- [ ] Agregar topics/tags (java, spring-boot, react, microservices, ecommerce)
-- [ ] Habilitar Issues (para que otros reporten bugs)
-- [ ] Habilitar Discussions (opcional)
-
-### 2. Agregar Badge al README (Opcional)
-
-```markdown
-![Java](https://img.shields.io/badge/Java-17-orange)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green)
-![React](https://img.shields.io/badge/React-18-blue)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue)
-```
-
-### 3. Crear Release (Opcional)
-
-Si quieres marcar una versión:
-1. Ve a "Releases" en GitHub
-2. Click en "Create a new release"
-3. Tag: `v1.0.0`
-4. Título: "Initial Release"
-5. Descripción: Resumen de funcionalidades
-
-## 🎯 Mejores Prácticas
-
-### Para Commits Futuros
-
-```cmd
-# Bueno
-git commit -m "feat: add user authentication"
-git commit -m "fix: resolve cart total calculation bug"
-git commit -m "docs: update installation instructions"
-
-# Malo
-git commit -m "changes"
-git commit -m "update"
-git commit -m "fix bug"
-```
-
-### Convención de Commits
-
-- `feat:` nueva funcionalidad
-- `fix:` corrección de bug
-- `docs:` cambios en documentación
-- `style:` formato, espacios, etc.
-- `refactor:` refactorización de código
-- `test:` agregar tests
-- `chore:` tareas de mantenimiento
-
-## ⚠️ Errores Comunes a Evitar
-
-- ❌ Subir archivos `.env` con credenciales reales
-- ❌ Subir carpetas `node_modules/` o `target/`
-- ❌ Subir archivos de configuración del IDE (`.idea/`, `.vscode/`)
-- ❌ Commits con mensaje "asdf" o "test"
-- ❌ Subir archivos de bases de datos locales
-- ❌ Dejar contraseñas en el código
-
-## 🆘 Si Subiste Algo Sensible por Error
-
-```cmd
-# NUNCA hagas esto si ya hiciste push público
-# Contacta a GitHub Support inmediatamente
-
-# Para repositorios privados o antes del push:
-git reset --soft HEAD~1  # Deshacer último commit
-git reset HEAD archivo   # Quitar archivo del staging
-```
-
-## 📞 Ayuda
-
-Si tienes dudas:
-- GitHub Docs: https://docs.github.com/
-- Git Basics: https://git-scm.com/book/en/v2
-
----
-
-Una vez completado este checklist, ¡tu proyecto estará listo para GitHub! 🚀
+- ❌ Subir `.env` o un `.env.example` con credenciales reales.
+- ❌ Versionar `target/`, `node_modules/` o `build/`.
+- ❌ Hacer commit de logs de build.
+- ❌ Mantener `render.yaml`, `netlify.toml` o enlaces a GitHub Pages.
+- ❌ Publicar la rama sin ejecutar las pruebas.
+- ❌ Hacer force-push sin avisar a los colaboradores.
+- ❌ Creer que borrar un secreto del `HEAD` lo elimina del historial.

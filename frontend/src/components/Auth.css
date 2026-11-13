@@ -202,6 +202,17 @@
   font-weight: 300;
 }
 
+.success-message {
+  background: rgba(76, 175, 80, 0.12);
+  color: #8bc34a;
+  padding: 1rem;
+  border-radius: 0;
+  margin-bottom: 1.5rem;
+  border-left: 3px solid #8bc34a;
+  font-size: 14px;
+  font-weight: 300;
+}
+
 .auth-footer {
   text-align: center;
   margin-top: 2rem;

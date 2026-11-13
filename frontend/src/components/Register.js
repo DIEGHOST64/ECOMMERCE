@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import './Auth.css';
+import { authApi } from '../api/authApi';
 
 function Register() {
   const [formData, setFormData] = useState({
@@ -10,7 +10,7 @@ function Register() {
     password: '',
     confirmPassword: '',
     telefono: '',
-    edad: ''
+    edad: '',
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -18,23 +18,14 @@ function Register() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
-    // Para el teléfono, asegurar que siempre tenga +57
+
     if (name === 'telefono') {
-      let phoneValue = value.replace(/[^\d]/g, ''); // Solo números
-      if (phoneValue.length > 10) {
-        phoneValue = phoneValue.slice(0, 10); // Máximo 10 dígitos
-      }
-      setFormData({
-        ...formData,
-        telefono: phoneValue
-      });
-    } else {
-      setFormData({
-        ...formData,
-        [name]: value
-      });
+      const soloDigitos = value.replace(/\D/g, '').slice(0, 10);
+      setFormData({ ...formData, telefono: soloDigitos });
+      return;
     }
+
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e) => {
@@ -49,19 +40,20 @@ function Register() {
     setLoading(true);
 
     try {
-      await axios.post('http://localhost:9090/api/ecommerce/usuario/save', {
-        nombre: formData.nombre,
-        email: formData.email,
+      await authApi.register({
+        nombre: formData.nombre.trim(),
+        email: formData.email.trim(),
         password: formData.password,
-        telefono: '+57' + formData.telefono,
-        role: 'CLIENTE',
-        edad: parseInt(formData.edad)
+        telefono: `+57${formData.telefono}`,
+        edad: parseInt(formData.edad, 10),
       });
-      
-      navigate('/login');
-      alert('Registro exitoso. Por favor inicia sesión.');
+
+      navigate('/login', {
+        replace: true,
+        state: { message: 'Registro exitoso. Ya puedes iniciar sesión.' },
+      });
     } catch (err) {
-      setError(err.response?.data?.message || 'Error al registrarse');
+      setError(err.message || 'No se pudo completar el registro');
     } finally {
       setLoading(false);
     }
@@ -72,9 +64,9 @@ function Register() {
       <div className="auth-card">
         <h2>Crear Cuenta</h2>
         <p className="auth-subtitle">Únete a nuestra comunidad</p>
-        
+
         {error && <div className="error-message">{error}</div>}
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Nombre</label>
@@ -84,10 +76,12 @@ function Register() {
               value={formData.nombre}
               onChange={handleChange}
               placeholder="Tu nombre completo"
+              autoComplete="name"
+              maxLength="100"
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Email</label>
             <input
@@ -96,10 +90,12 @@ function Register() {
               value={formData.email}
               onChange={handleChange}
               placeholder="tu@email.com"
+              autoComplete="email"
+              maxLength="120"
               required
             />
           </div>
-          
+
           <div className="form-group">
             <label>Teléfono</label>
             <div className="phone-input">
@@ -110,13 +106,14 @@ function Register() {
                 value={formData.telefono}
                 onChange={handleChange}
                 placeholder="3014346586"
+                autoComplete="tel-national"
                 required
                 maxLength="10"
                 pattern="[0-9]{10}"
               />
             </div>
           </div>
-          
+
           <div className="form-group">
             <label>Edad</label>
             <input
@@ -130,7 +127,7 @@ function Register() {
               max="120"
             />
           </div>
-          
+
           <div className="form-group">
             <label>Contraseña</label>
             <input
@@ -139,11 +136,13 @@ function Register() {
               value={formData.password}
               onChange={handleChange}
               placeholder="••••••••"
+              autoComplete="new-password"
               required
               minLength="6"
+              maxLength="72"
             />
           </div>
-          
+
           <div className="form-group">
             <label>Confirmar Contraseña</label>
             <input
@@ -152,15 +151,17 @@ function Register() {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"
+              autoComplete="new-password"
               required
+              minLength="6"
             />
           </div>
-          
+
           <button type="submit" className="btn-primary" disabled={loading}>
             {loading ? 'Registrando...' : 'Registrarse'}
           </button>
         </form>
-        
+
         <p className="auth-footer">
           ¿Ya tienes cuenta? <Link to="/login">Inicia sesión aquí</Link>
         </p>

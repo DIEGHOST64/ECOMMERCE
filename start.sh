@@ -1,18 +1,30 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Script para configurar variables de entorno desde la URL de PostgreSQL de Render
-# Render proporciona DATABASE_URL en formato: postgresql://user:password@host:port/dbname
+cd "$(dirname "$0")"
 
-if [ -n "$DATABASE_URL" ]; then
-    # Extraer componentes de la URL
-    export DB_HOST=$(echo $DATABASE_URL | sed -e 's/.*@\(.*\):.*/\1/')
-    export DB_PORT=$(echo $DATABASE_URL | sed -e 's/.*:\([0-9]*\)\/.*/\1/')
-    export DB_NAME=$(echo $DATABASE_URL | sed -e 's/.*\/\(.*\)/\1/')
-    export DB_USERNAME=$(echo $DATABASE_URL | sed -e 's/.*:\/\/\(.*\):.*/\1/')
-    export DB_PASSWORD=$(echo $DATABASE_URL | sed -e 's/.*:\/\/.*:\(.*\)@.*/\1/')
-    
-    echo "Database configuration loaded from DATABASE_URL"
+if ! command -v docker >/dev/null 2>&1; then
+  echo "Docker no esta instalado: https://docs.docker.com/get-docker/" >&2
+  exit 1
 fi
 
-# Ejecutar el comando pasado como argumentos
-exec "$@"
+if ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Compose v2 no esta disponible." >&2
+  exit 1
+fi
+
+if [ ! -f .env ]; then
+  cp .env.example .env
+  echo "Se creo .env desde .env.example. Edita los secretos y ejecuta de nuevo." >&2
+  exit 1
+fi
+
+docker compose up -d --build
+docker compose ps
+
+echo
+echo "Frontend:        http://localhost:3000"
+echo "Auth API:        http://localhost:9090"
+echo "Catalogo API:    http://localhost:9092"
+echo "Mailpit:         http://localhost:8025"
+echo "RabbitMQ:        http://localhost:15672"

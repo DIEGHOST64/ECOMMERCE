@@ -3,204 +3,197 @@
 ![Java](https://img.shields.io/badge/Java-17-orange?style=for-the-badge&logo=openjdk)
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green?style=for-the-badge&logo=springboot)
 ![React](https://img.shields.io/badge/React-18-blue?style=for-the-badge&logo=react)
-![PostgreSQL](https://img.shields.io/badge/PostgreSQL-12+-blue?style=for-the-badge&logo=postgresql)
-![AWS](https://img.shields.io/badge/AWS-SQS%20%7C%20SES-orange?style=for-the-badge&logo=amazonaws)
-![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue?style=for-the-badge&logo=postgresql)
+![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.13-orange?style=for-the-badge&logo=rabbitmq)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue?style=for-the-badge&logo=docker)
 
-Sistema de comercio electronico desarrollado con arquitectura de microservicios utilizando Spring Boot, React y AWS.
+Plataforma de comercio electrónico con microservicios Spring Boot, frontend React y un stack **100 % open source**. Ya no depende de AWS ni de Twilio.
 
-## 🚀 Enlaces Rápidos
+## Reemplazos respecto a la versión anterior
 
-- 📖 **[Guía de Postman](./POSTMAN_GUIDE.md)** - Cómo usar la colección de Postman
-- 📦 **[Colección Postman](./POSTMAN_COLLECTION.json)** - Importa todos los endpoints
-- 🚢 **[Guía de Despliegue](./DEPLOYMENT.md)** - Deploy en GitHub Pages, Netlify, Render
-- 🏗️ **[Arquitectura](./ARCHITECTURE.md)** - Detalles técnicos del sistema
-- 📡 **[API Documentation](./API.md)** - Documentación completa de endpoints
+| Antes | Ahora |
+| --- | --- |
+| AWS SQS | RabbitMQ (exchange topic + cola con reintentos y DLQ) |
+| AWS SES | SMTP: Mailpit en desarrollo, cualquier servidor SMTP en producción |
+| Twilio SMS | Adaptador SMS por webhook HTTP o modo `log` |
+| Rol enviado en `X-User-Role` | JWT firmado y validado con Spring Security |
+| `usuarioId` en la URL/query | Identidad derivada del JWT |
+| ModelMapper | Mappers explícitos por caso de uso |
+| Secretos en scripts `.bat` | Variables de entorno en `.env` (ignorado por Git) |
 
-## Tabla de Contenidos
+## Inicio rápido con Docker
 
-- [Descripcion](#descripcion)
-- [Caracteristicas Principales](#caracteristicas-principales)
-- [Inicio Rapido](#inicio-rapido)
-- [Arquitectura](#arquitectura)
-- [Tecnologias](#tecnologias)
-- [Prerrequisitos](#prerrequisitos)
-- [Instalacion](#instalacion)
-- [Configuracion](#configuracion)
-- [Ejecucion](#ejecucion)
-- [Estructura del Proyecto](#estructura-del-proyecto)
-- [Documentacion Adicional](#documentacion-adicional)
-- [Contribuciones](#contribuciones)
-- [Licencia](#licencia)
-
-## Inicio Rapido
+Requisitos: Docker Desktop con Docker Compose v2.
 
 ```bash
-# 1. Clonar el repositorio
 git clone https://github.com/DIEGHOST64/ECOMMERCE.git
 cd ECOMMERCE
 
-# 2. Crear bases de datos PostgreSQL
-psql -U postgres -c "CREATE DATABASE ecommerce_auth;"
-psql -U postgres -c "CREATE DATABASE ecommerce;"
-
-# 3. Configurar variables de entorno
-copy auth\auth\auth\.env.example auth\auth\auth\.env
-copy catalogo\catalogo\.env.example catalogo\catalogo\.env
-
-# 4. Instalar dependencias frontend
-cd frontend
-npm install
-cd ..
-
-# 5. Ejecutar servicios (PowerShell)
-.\start-services.ps1
+cp .env.example .env
+# Windows: copy .env.example .env
 ```
 
-Accede a http://localhost:3000
+Edita `.env` y cambia como mínimo:
 
-## Descripcion
+- `POSTGRES_PASSWORD`
+- `RABBITMQ_PASSWORD`
+- `JWT_SECRET` (mínimo 32 caracteres; genera uno con `openssl rand -base64 48`)
 
-Plataforma de e-commerce modular construida con microservicios que incluye:
-- Sistema de autenticacion y autorizacion
-- Catalogo de productos y gestion de carrito
-- Sistema de notificaciones (Email/SMS)
-- Interfaz de usuario React responsiva
+```bash
+docker compose up -d --build
+docker compose ps
+```
 
-## Caracteristicas Principales
+En Windows también puedes usar:
 
-**Arquitectura de Microservicios**: Servicios independientes y escalables
-**Clean Architecture**: Codigo organizado y mantenible
-**API RESTful**: Endpoints bien documentados
-**Autenticacion JWT**: Seguridad robusta
-**Mensajeria Asincrona**: Procesamiento en background con AWS SQS
-**Responsive Design**: Interfaz adaptable a dispositivos moviles
-**Base de Datos Relacional**: PostgreSQL para persistencia de datos
-**Notificaciones Multi-canal**: Email (AWS SES) y SMS (Twilio)
+```powershell
+.\setup.bat
+# edita .env
+powershell -ExecutionPolicy Bypass -File .\start-services.ps1
+```
+
+Servicios disponibles:
+
+| Servicio | URL |
+| --- | --- |
+| Frontend | http://localhost:3000 |
+| Auth API | http://localhost:9090 |
+| Catálogo API | http://localhost:9092 |
+| Mailpit (correo) | http://localhost:8025 |
+| RabbitMQ Management | http://localhost:15672 |
+
+Para crear el primer administrador, registra un usuario desde el frontend y promuévelo:
+
+```bash
+docker compose exec postgres psql -U postgres -d ecommerce \
+  -c "UPDATE usuario SET role = 'ADMIN' WHERE email = 'tu@email.com';"
+```
+
+Cierra sesión y vuelve a entrar para que el nuevo JWT incluya el rol.
+
+Detener la plataforma:
+
+```bash
+docker compose down          # conserva los datos
+docker compose down --volumes  # elimina PostgreSQL y RabbitMQ
+```
 
 ## Arquitectura
 
-El proyecto esta compuesto por los siguientes microservicios:
+```text
+Navegador
+   |
+   v
+Frontend React (nginx)
+   |------------------------------+
+   v                              v
+Auth API :9090                 Catálogo API :9092
+   |      \                       |       \
+   |       \--> RabbitMQ <--------+        \--> Auth (validar usuario)
+   |              |
+   v              v
+PostgreSQL   Notificaciones :9093
+                 |        \
+                 v         v
+              SMTP      SMS webhook/log
+```
 
-**Auth Service** (Puerto 9090): Gestion de usuarios, autenticacion y autorizacion
-**Catalogo Service** (Puerto 9092): Gestion de productos, categorias y carrito de compras
-**Notificaciones Service** (Puerto 9093): Envio de notificaciones por email (AWS SES) y SMS (Twilio)
-**Frontend** (Puerto 3000): Aplicacion React para la interfaz de usuario
+- **Auth** registra usuarios, autentica y emite JWT.
+- **Catálogo** administra productos, carrito y compras. Valida el JWT localmente y consulta a Auth cuando necesita datos del usuario.
+- **Notificaciones** consume RabbitMQ y envía email/SMS. Los fallos se reintentan y, agotados los intentos, van a una DLQ.
+- **Frontend** usa clientes API centralizados, guarda la sesión JWT y normaliza roles.
 
-## Tecnologias
+Más detalles en [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-### Backend
-- **Java 17**
-- **Spring Boot 3.5.x**
-- **Spring Data JPA**
-- **PostgreSQL**
-- **Maven**
-- **AWS SDK** (SQS, SES)
-- **Twilio API**
+## Clean Architecture
 
-### Frontend
-- **React 18**
-- **Vite**
-- **Tailwind CSS**
-- **Axios**
+Cada servicio respeta la regla de dependencia: `domain` no conoce frameworks; `application` implementa los casos de uso; `infraestructura` contiene los adaptadores.
 
-## Prerrequisitos
+```text
+servicio/src/main/java/com/ecommerce/<servicio>/
+├── domain/
+│   ├── model/          Entidades y objetos de valor
+│   ├── port/in/        Casos de uso (interfaces)
+│   ├── port/out/       Puertos hacia infraestructura
+│   └── exception/      Excepciones de negocio
+├── application/
+│   └── usecase/        Implementación de casos de uso
+└── infraestructura/
+    ├── config/         Spring, seguridad, RabbitMQ
+    ├── entry_points/   Controllers REST + DTOs
+    ├── driver_adapters/ JPA, SMTP, SMS, clientes HTTP
+    ├── messaging/      Productores/consumidores RabbitMQ
+    ├── security/       JWT
+    └── mapper/         Traducción dominio <-> persistencia/DTO
+```
 
-- Java 17 o superior
-- Node.js 18 o superior
-- PostgreSQL 12 o superior
-- Maven 3.8 o superior
-- Cuenta AWS (para SQS y SES)
-- Cuenta Twilio (para SMS)
+## Desarrollo local sin contenedores para los servicios
 
-## Instalacion
+Levanta solo la infraestructura:
 
-1. Clonar el repositorio:
 ```bash
-git clone https://github.com/DIEGHOST64/ECOMMERCE.git
-cd ECOMMERCE
+docker compose up -d postgres rabbitmq mailpit
 ```
 
-2. Configurar bases de datos:
-```sql
-CREATE DATABASE ecommerce_auth;
-CREATE DATABASE ecommerce;
-```
+Ejecuta un servicio con Maven y las variables del `.env` raíz:
 
-3. Configurar variables de entorno en cada servicio
-
-4. Instalar dependencias:
-```bash
-# Frontend
-cd frontend
-npm install
-```
-
-## Configuracion
-
-Editar archivos de configuracion con tus credenciales:
-- `auth/auth/auth/src/main/resources/application.properties`
-- `catalogo/catalogo/src/main/resources/application.properties`
-- `notificaciones/src/main/resources/application.properties`
-
-## Ejecucion
-
-### PowerShell
 ```powershell
-.\start-services.ps1
+.\run-local.ps1 auth
+.\run-local.ps1 catalogo
+.\run-local.ps1 notificaciones
 ```
 
-### Manual
+En otra terminal:
+
 ```bash
-# Terminal 1: Auth Service
-cd auth\auth\auth
-mvnw.cmd spring-boot:run
-
-# Terminal 2: Catalogo Service
-cd catalogo\catalogo
-mvnw.cmd spring-boot:run
-
-# Terminal 3: Notificaciones Service
-cd notificaciones
-mvnw.cmd spring-boot:run
-
-# Terminal 4: Frontend
 cd frontend
+npm ci
 npm start
 ```
 
-## Estructura del Proyecto
+El frontend usa por defecto `http://localhost:9090` y `http://localhost:9092`. Puedes cambiarlo con:
 
-```
-ECOMMERCE/
- auth/                    # Servicio de autenticacion
- catalogo/                # Servicio de catalogo
- notificaciones/          # Servicio de notificaciones
- frontend/                # Aplicacion React
- start-services.ps1       # Script para iniciar servicios
- README.md
+```bash
+REACT_APP_AUTH_URL=http://localhost:9090
+REACT_APP_CATALOGO_URL=http://localhost:9092
 ```
 
-## Documentacion Adicional
+## Pruebas
 
-- [Arquitectura](./ARCHITECTURE.md)
-- [API Documentation](./API.md)
-- [Guia de Contribucion](./CONTRIBUTING.md)
-- [Dependencias](./DEPENDENCIES.md)
+```bash
+# Backend
+cd auth/auth/auth && ./mvnw clean verify
+cd catalogo/catalogo && ./mvnw clean verify
+cd notificaciones && ./mvnw clean verify
 
-## Contribuciones
+# Frontend
+cd frontend
+npm test -- --watchAll=false
+npm run build
+```
 
-Las contribuciones son bienvenidas. Por favor:
-1. Fork el proyecto
-2. Crea una rama para tu feature
-3. Commit tus cambios
-4. Push a la rama
-5. Abre un Pull Request
+En Windows usa `mvnw.cmd` y `npm.cmd`. El workflow de GitHub Actions (`.github/workflows/ci.yml`) ejecuta las tres suites, las pruebas del frontend y valida `docker-compose.yml`.
+
+## Documentación
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — capas, flujos y mensajería.
+- [API.md](./API.md) — endpoints, roles y ejemplos.
+- [POSTMAN_GUIDE.md](./POSTMAN_GUIDE.md) — uso de la colección Postman.
+- [DEPLOYMENT.md](./DEPLOYMENT.md) — despliegue con Docker y consideraciones de producción.
+- [INSTALL.md](./INSTALL.md) — instalación detallada.
+- [DEPENDENCIES.md](./DEPENDENCIES.md) — dependencias y versiones.
+
+## Seguridad
+
+- Contraseñas con BCrypt; JWT firmado con HMAC-SHA256 y expiración configurable.
+- Roles `USER` y `ADMIN`; el backend fuerza `USER` en el registro.
+- El catálogo deriva el usuario del JWT: no acepta `usuarioId` ni `X-User-Role` del cliente.
+- Propiedad verificada en carrito, compras y datos de usuario.
+- El stock se descuenta de forma atómica solo al confirmar la compra; el carrito no reserva inventario.
+- Los secretos viven en `.env`, que está ignorado por Git.
+
+> **Importante:** versiones anteriores de este repositorio público incluyeron credenciales de AWS y Twilio en el historial de Git. Si clonaste o usaste esas versiones, considera esas credenciales comprometidas: rótalas o revócalas. Eliminar los secretos del `HEAD` no los borra del historial; para eso usa `git filter-repo` o BFG y luego fuerza el push.
 
 ## Licencia
 
-Este proyecto esta bajo la Licencia MIT. Ver el archivo `LICENSE` para mas detalles.
-
----
-
-Desarrollado por DIEGHOST64
+MIT. Consulta [LICENSE](./LICENSE).

@@ -1,298 +1,142 @@
-# Dependencias del Proyecto E-Commerce
+# Dependencias
 
-## 📦 Resumen de Dependencias
+Todas las dependencias son open source. Ya no se usan SDK de AWS, Twilio, ModelMapper, Axios ni `gh-pages`.
 
-Este documento lista todas las dependencias utilizadas en el proyecto para referencia rápida.
+## Backend
 
-## Backend - Microservicios Java/Spring Boot
+### Común a los tres servicios
 
-### Auth Service
+- **Java 17**
+- **Spring Boot 3.5.7** (parent)
+- **Maven Wrapper** (`mvnw` / `mvnw.cmd`)
+- **Lombok** (gestionado por Spring Boot)
+- **Spring Boot Starter Test**
+- **Spring Boot Maven Plugin**
 
-**Framework Base:**
-- Spring Boot 3.5.5
-- Java 17
+### Auth (`auth/auth/auth/pom.xml`)
 
-**Dependencias Maven:**
-```xml
-<!-- Spring Boot Starters -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-jpa</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
+| Dependencia | Uso |
+| --- | --- |
+| `spring-boot-starter-web` | API REST |
+| `spring-boot-starter-data-jpa` | Persistencia |
+| `spring-boot-starter-security` | Autenticación y autorización |
+| `spring-boot-starter-validation` | Validación de DTOs |
+| `spring-boot-starter-amqp` | Publicación en RabbitMQ |
+| `spring-boot-starter-actuator` | Healthcheck |
+| `postgresql` (runtime) | Driver PostgreSQL |
+| `jjwt-api`, `jjwt-impl`, `jjwt-jackson` 0.12.6 | Generación y validación de JWT |
+| `spring-security-test` (test) | Pruebas de seguridad |
+| `h2` (test) | Base de datos en memoria para tests |
 
-<!-- Spring Security -->
-<dependency>
-    <groupId>org.springframework.security</groupId>
-    <artifactId>spring-security-web</artifactId>
-    <version>6.5.5</version>
-</dependency>
+### Catálogo (`catalogo/catalogo/pom.xml`)
 
-<!-- Base de Datos -->
-<dependency>
-    <groupId>org.postgresql</groupId>
-    <artifactId>postgresql</artifactId>
-    <scope>runtime</scope>
-</dependency>
+| Dependencia | Uso |
+| --- | --- |
+| `spring-boot-starter-web` | API REST |
+| `spring-boot-starter-data-jpa` | Persistencia |
+| `spring-boot-starter-security` | Validación de JWT y roles |
+| `spring-boot-starter-validation` | Validación de DTOs |
+| `spring-boot-starter-amqp` | Publicación en RabbitMQ |
+| `spring-boot-starter-actuator` | Healthcheck |
+| `postgresql` (runtime) | Driver PostgreSQL |
+| `jjwt-api`, `jjwt-impl`, `jjwt-jackson` 0.12.6 | Validación de JWT |
+| `spring-security-test` (test) | Pruebas de seguridad |
+| `h2` (test) | Base de datos en memoria para tests |
 
-<!-- Utilidades -->
-<dependency>
-    <groupId>org.projectlombok</groupId>
-    <artifactId>lombok</artifactId>
-    <optional>true</optional>
-</dependency>
+### Notificaciones (`notificaciones/pom.xml`)
 
-<!-- Variables de Entorno -->
-<dependency>
-    <groupId>me.paulschwarz</groupId>
-    <artifactId>spring-dotenv</artifactId>
-    <version>4.0.0</version>
-</dependency>
+| Dependencia | Uso |
+| --- | --- |
+| `spring-boot-starter-web` | Servidor HTTP y actuator |
+| `spring-boot-starter-amqp` | Consumo de RabbitMQ |
+| `spring-boot-starter-mail` | Envío SMTP |
+| `spring-boot-starter-actuator` | Healthcheck |
+| `spring-rabbit-test` (test) | Pruebas del listener RabbitMQ |
 
-<!-- Mapeo de Objetos -->
-<dependency>
-    <groupId>org.modelmapper</groupId>
-    <artifactId>modelmapper</artifactId>
-    <version>3.1.0</version>
-</dependency>
+### Dependencias retiradas
 
-<!-- Testing -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-test</artifactId>
-    <scope>test</scope>
-</dependency>
-```
+- `software.amazon.awssdk:sqs` y `ses` (AWS).
+- `com.twilio.sdk:twilio`.
+- `org.modelmapper:modelmapper`.
+- `me.paulschwarz:spring-dotenv` (la configuración se inyecta por variables de entorno).
+- `spring-security-web` declarado a mano (lo aporta `spring-boot-starter-security`).
 
-### Catálogo Service
+## Frontend (`frontend/package.json`)
 
-**Framework Base:**
-- Spring Boot 3.5.7
-- Java 17
+| Dependencia | Versión | Uso |
+| --- | --- | --- |
+| `react` | ^18.2.0 | UI |
+| `react-dom` | ^18.2.0 | Renderizado |
+| `react-icons` | ^5.5.0 | Iconos |
+| `react-router-dom` | ^6.20.0 | Rutas |
+| `react-scripts` | 5.0.1 | Create React App (build, test, dev server) |
 
-**Dependencias Maven:**
-```xml
-<!-- Spring Boot Starters -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-jpa</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
+Dependencias retiradas:
 
-<!-- Base de Datos -->
-<dependency>
-    <groupId>org.postgresql</groupId>
-    <artifactId>postgresql</artifactId>
-    <scope>runtime</scope>
-</dependency>
+- `axios`: se usa `fetch` nativo a través de `src/api/client.js`.
+- `gh-pages`: el despliegue ya no es GitHub Pages.
 
-<!-- Utilidades -->
-<dependency>
-    <groupId>org.projectlombok</groupId>
-    <artifactId>lombok</artifactId>
-    <optional>true</optional>
-</dependency>
+El archivo `package-lock.json` se versiona para que `npm ci` sea reproducible en CI y en Docker.
 
-<!-- Variables de Entorno -->
-<dependency>
-    <groupId>me.paulschwarz</groupId>
-    <artifactId>spring-dotenv</artifactId>
-    <version>4.0.0</version>
-</dependency>
+## Infraestructura
 
-<!-- AWS SQS para mensajería -->
-<dependency>
-    <groupId>software.amazon.awssdk</groupId>
-    <artifactId>sqs</artifactId>
-    <version>2.20.26</version>
-</dependency>
+| Imagen | Versión | Uso |
+| --- | --- | --- |
+| `postgres` | `16-alpine` | Base de datos |
+| `rabbitmq` | `3.13-management-alpine` | Mensajería y consola |
+| `axllent/mailpit` | `latest` | SMTP de desarrollo y visor de correos |
+| `maven` | `3.9-eclipse-temurin-17` | Build de los servicios |
+| `eclipse-temurin` | `17-jre-alpine` | Runtime de los servicios |
+| `node` | `20-alpine` | Build del frontend |
+| `nginx` | `1.27-alpine` | Servidor estático del frontend |
 
-<!-- Jackson para manejo de fechas -->
-<dependency>
-    <groupId>com.fasterxml.jackson.datatype</groupId>
-    <artifactId>jackson-datatype-jsr310</artifactId>
-</dependency>
+## Herramientas de desarrollo
 
-<!-- Testing -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-test</artifactId>
-    <scope>test</scope>
-</dependency>
-```
+Obligatorias:
 
-### Notificaciones Service
+- Docker con Compose v2.
+- Git.
 
-**Framework Base:**
-- Spring Boot 3.5.5
-- Java 17
-- AWS SDK 2.20.26
+Opcionales:
 
-**Dependencias Maven:**
-```xml
-<!-- Spring Boot Starters -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-web</artifactId>
-</dependency>
+- JDK 17 y Node.js 20 para desarrollo sin contenedores.
+- Postman o Insomnia.
+- `psql` o pgAdmin.
+- `openssl` para generar secretos.
 
-<!-- AWS SDK BOM (Bill of Materials) -->
-<dependency>
-    <groupId>software.amazon.awssdk</groupId>
-    <artifactId>bom</artifactId>
-    <version>2.20.26</version>
-    <type>pom</type>
-    <scope>import</scope>
-</dependency>
-
-<!-- AWS SQS -->
-<dependency>
-    <groupId>software.amazon.awssdk</groupId>
-    <artifactId>sqs</artifactId>
-</dependency>
-
-<!-- AWS SES (Simple Email Service) -->
-<dependency>
-    <groupId>software.amazon.awssdk</groupId>
-    <artifactId>ses</artifactId>
-</dependency>
-
-<!-- Twilio para SMS -->
-<dependency>
-    <groupId>com.twilio.sdk</groupId>
-    <artifactId>twilio</artifactId>
-    <version>9.14.1</version>
-</dependency>
-
-<!-- Variables de Entorno -->
-<dependency>
-    <groupId>me.paulschwarz</groupId>
-    <artifactId>spring-dotenv</artifactId>
-    <version>4.0.0</version>
-</dependency>
-
-<!-- Utilidades -->
-<dependency>
-    <groupId>org.projectlombok</groupId>
-    <artifactId>lombok</artifactId>
-    <optional>true</optional>
-</dependency>
-
-<!-- Jackson -->
-<dependency>
-    <groupId>com.fasterxml.jackson.core</groupId>
-    <artifactId>jackson-databind</artifactId>
-</dependency>
-
-<!-- Testing -->
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-test</artifactId>
-    <scope>test</scope>
-</dependency>
-```
-
-## Frontend - React
-
-**Runtime:**
-- Node.js 16+
-- npm o yarn
-
-**Dependencias npm:**
-```json
-{
-  "dependencies": {
-    "axios": "^1.6.2",           // Cliente HTTP
-    "react": "^18.2.0",          // Framework React
-    "react-dom": "^18.2.0",      // React DOM
-    "react-icons": "^5.5.0",     // Biblioteca de iconos
-    "react-router-dom": "^6.20.0", // Enrutamiento
-    "react-scripts": "5.0.1"     // Scripts de Create React App
-  }
-}
-```
-
-## 🗄️ Base de Datos
-
-**PostgreSQL:**
-- Versión recomendada: 12+
-- Dos bases de datos:
-  - `ecommerce_auth` (para Auth Service)
-  - `ecommerce` (para Catálogo Service)
-
-## ☁️ Servicios Externos (Opcionales)
-
-**AWS:**
-- SQS (Simple Queue Service) - Mensajería asíncrona
-- SES (Simple Email Service) - Envío de correos
-
-**Twilio:**
-- API de SMS para notificaciones
-
-## 🛠️ Herramientas de Desarrollo
-
-**Obligatorias:**
-- JDK 17+ (OpenJDK o Oracle)
-- Maven 3.6+ (incluido Maven Wrapper en el proyecto)
-- Node.js 16+ y npm
-- PostgreSQL 12+
-
-**Opcionales:**
-- Git
-- IDE (IntelliJ IDEA, VS Code, Eclipse)
-- Postman o Insomnia (para probar APIs)
-- pgAdmin (cliente PostgreSQL)
-
-## 📊 Comandos de Instalación Rápida
-
-### Backend (cada microservicio)
-```cmd
-mvnw.cmd clean install
-```
-
-### Frontend
-```cmd
-npm install
-```
-
-## 🔄 Actualizar Dependencias
+## Actualizar dependencias
 
 ### Maven
-```cmd
-mvnw.cmd versions:display-dependency-updates
+
+```bash
+cd auth/auth/auth
+./mvnw versions:display-dependency-updates
 ```
+
+Repite en Catálogo y Notificaciones. Actualiza versiones de forma controlada y ejecuta `./mvnw clean verify`.
 
 ### npm
-```cmd
+
+```bash
+cd frontend
 npm outdated
 npm update
+npm test -- --watchAll=false
+npm run build
 ```
 
-## 📝 Notas Importantes
+### Vulnerabilidades
 
-1. **Maven Wrapper**: El proyecto incluye `mvnw.cmd`, no necesitas instalar Maven globalmente
-2. **Variables de Entorno**: Todas las credenciales se gestionan mediante archivos `.env`
-3. **Spring Dotenv**: Permite usar archivos `.env` en Spring Boot
-4. **AWS SDK**: Solo necesario si vas a usar las funcionalidades de notificaciones
-5. **Twilio**: Solo necesario para SMS, el email funciona con AWS SES
+```bash
+cd frontend
+npm audit
 
-## 🔒 Seguridad
+# Backend: requiere el plugin OWASP Dependency-Check si se añade al pom
+./mvnw org.owasp:dependency-check-maven:check
+```
 
-- Nunca subas archivos `.env` a Git
-- Usa `.env.example` como plantilla
-- Las dependencias se actualizan regularmente para parches de seguridad
-- Revisa vulnerabilidades con:
-  ```cmd
-  mvnw.cmd dependency-check:check
-  npm audit
-  ```
+## Notas
 
----
-
-Para más información, consulta el `README.md` principal.
+- Los servicios no comparten librerías Java; el contrato de notificaciones es JSON y se documenta en [ARCHITECTURE.md](./ARCHITECTURE.md#5-mensajería).
+- `JWT_SECRET` es la única configuración que debe coincidir obligatoriamente entre Auth y Catálogo.
+- Mailpit y el usuario `guest` de RabbitMQ son solo para desarrollo.

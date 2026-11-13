@@ -10,6 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificacionSMS {
+
     private String numeroTelefono;
     private String mensaje;
 }

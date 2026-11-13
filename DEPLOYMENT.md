@@ -1,223 +1,323 @@
-# 🚀 Guía de Despliegue - E-Commerce Microservicios
+# Despliegue
 
-Esta guía te ayudará a desplegar el proyecto completo de forma gratuita.
+El runtime soportado es **Docker Compose**. Las configuraciones antiguas de Netlify, Render, Railway y GitHub Pages fueron retiradas porque no reflejan el stack actual (RabbitMQ, SMTP y JWT compartido).
 
-## 📋 Tabla de Contenidos
+Para desarrollo local consulta [INSTALL.md](./INSTALL.md).
 
-- [Frontend en GitHub Pages](#frontend-en-github-pages)
-- [Frontend en Netlify](#frontend-en-netlify-alternativa)
-- [Backend en Render](#backend-en-render)
-- [Backend en Railway](#backend-en-railway-alternativa)
-- [Base de Datos](#base-de-datos)
+## 1. Requisitos
 
----
+- Docker Engine 24+ con Docker Compose v2.
+- Una máquina Linux con al menos 4 GB de RAM (8 GB recomendado para compilar las imágenes).
+- Un dominio y acceso al DNS si vas a exponer la aplicación a Internet.
+- Opcional: un proxy inverso con TLS (Caddy o Nginx).
 
-## 🎨 Frontend en GitHub Pages
+## 2. Variables de entorno
 
-### Paso 1: Configuración
-El proyecto ya está configurado. Solo necesitas:
+Copia `.env.example` a `.env` y cambia todos los valores sensibles.
 
 ```bash
-cd frontend
-npm install gh-pages --save-dev
-npm run deploy
+cp .env.example .env
 ```
 
-### Paso 2: Habilitar GitHub Pages
-1. Ve a tu repositorio en GitHub
-2. Settings → Pages
-3. Source: Selecciona "gh-pages" branch
-4. Save
+| Variable | Uso | Valor por defecto |
+| --- | --- | --- |
+| `POSTGRES_DB` | Nombre de la base | `ecommerce` |
+| `POSTGRES_USER` | Usuario de PostgreSQL | `postgres` |
+| `POSTGRES_PASSWORD` | Contraseña de PostgreSQL | cambiar |
+| `POSTGRES_PORT` | Puerto publicado de PostgreSQL | `5432` |
+| `JPA_DDL_AUTO` | Estrategia de Hibernate | `update` |
+| `RABBITMQ_USER` | Usuario de RabbitMQ | `ecommerce` |
+| `RABBITMQ_PASSWORD` | Contraseña de RabbitMQ | cambiar |
+| `RABBITMQ_PORT` | Puerto AMQP | `5672` |
+| `RABBITMQ_MANAGEMENT_PORT` | Consola de RabbitMQ | `15672` |
+| `JWT_SECRET` | Firma de los JWT (mínimo 32 caracteres) | cambiar |
+| `JWT_EXPIRATION_MINUTES` | Vigencia del token | `1440` |
+| `FRONTEND_PORT` | Puerto del frontend | `3000` |
+| `AUTH_PORT` | Puerto de Auth | `9090` |
+| `CATALOGO_PORT` | Puerto de Catálogo | `9092` |
+| `NOTIFICACIONES_PORT` | Puerto de Notificaciones | `9093` |
+| `MAILPIT_SMTP_PORT` | SMTP de Mailpit | `1025` |
+| `MAILPIT_UI_PORT` | Interfaz web de Mailpit | `8025` |
+| `CORS_ALLOWED_ORIGINS` | Orígenes permitidos, separados por coma | `http://localhost:3000` |
+| `MAIL_FROM` | Remitente de los correos | `no-reply@ecommerce.local` |
+| `MAIL_FROM_NAME` | Nombre del remitente | `E-Commerce` |
+| `SMS_PROVIDER` | `log` o `webhook` | `log` |
+| `SMS_WEBHOOK_URL` | Endpoint del gateway SMS | vacío |
+| `SMS_WEBHOOK_TOKEN` | Token del gateway SMS | vacío |
+| `REACT_APP_AUTH_URL` | URL pública de Auth (se compila en el bundle) | `http://localhost:9090` |
+| `REACT_APP_CATALOGO_URL` | URL pública de Catálogo | `http://localhost:9092` |
+| `REACT_APP_REQUEST_TIMEOUT_MS` | Timeout del frontend | `15000` |
 
-Tu frontend estará disponible en: `https://dieghost64.github.io/ECOMMERCE`
-
----
-
-## 🎨 Frontend en Netlify (Alternativa)
-
-### Opción 1: Despliegue Directo
-
-1. Ve a [netlify.com](https://netlify.com) e inicia sesión con GitHub
-2. Click en "New site from Git"
-3. Selecciona el repositorio ECOMMERCE
-4. Configuración:
-   - **Build command:** `cd frontend && npm run build`
-   - **Publish directory:** `frontend/build`
-5. Click "Deploy site"
-
-### Opción 2: Con Netlify CLI
+Genera secretos fuertes:
 
 ```bash
-# Instalar Netlify CLI
-npm install -g netlify-cli
-
-# Login
-netlify login
-
-# Desplegar
-cd frontend
-npm run build
-netlify deploy --prod
+openssl rand -base64 48   # JWT_SECRET
+openssl rand -base64 32   # POSTGRES_PASSWORD
+openssl rand -base64 32   # RABBITMQ_PASSWORD
 ```
 
----
+`JWT_SECRET` debe ser idéntico para Auth y Catálogo. Compose lo inyecta en ambos desde la misma variable.
 
-## 🔧 Backend en Render
+## 3. Despliegue en un servidor único
 
-Render ofrece servicios gratuitos para PostgreSQL y Spring Boot.
+```bash
+git clone https://github.com/DIEGHOST64/ECOMMERCE.git
+cd ECOMMERCE
+cp .env.example .env
+nano .env
+docker compose up -d --build
+docker compose ps
+```
 
-### Paso 1: Crear Base de Datos PostgreSQL
+Verifica los healthchecks:
 
-1. Ve a [render.com](https://render.com) y crea una cuenta
-2. Dashboard → New → PostgreSQL
-3. Configuración:
-   - **Name:** ecommerce-db
-   - **Database:** ecommerce
-   - **User:** postgres
-   - **Region:** selecciona la más cercana
-   - **Plan:** Free
-4. Click "Create Database"
-5. **Guarda la URL de conexión externa**
+```bash
+curl http://localhost:9090/actuator/health
+curl http://localhost:9092/actuator/health
+curl http://localhost:9093/actuator/health
+curl http://localhost:3000/health
+```
 
-### Paso 2: Desplegar Servicio Auth
+El primer arranque compila las imágenes Maven y npm, por lo que puede tardar varios minutos.
 
-1. Dashboard → New → Web Service
-2. Conecta tu repositorio de GitHub
-3. Configuración:
-   - **Name:** ecommerce-auth
-   - **Environment:** Java
-   - **Build Command:** `cd auth/auth/auth && ./mvnw clean package -DskipTests`
-   - **Start Command:** `cd auth/auth/auth && java -jar target/auth-0.0.1-SNAPSHOT.jar`
-   - **Plan:** Free
-4. Variables de entorno:
-   ```
-   DB_HOST=<tu-host-render-postgresql>
-   DB_PORT=5432
-   DB_NAME=ecommerce
-   DB_USERNAME=postgres
-   DB_PASSWORD=<tu-password-render>
-   JWT_SECRET=tu_clave_secreta_jwt_muy_larga_y_segura
-   ```
-5. Click "Create Web Service"
+Para seguir los logs:
 
-### Paso 3: Desplegar Servicio Catálogo
+```bash
+docker compose logs -f
+docker compose logs -f auth
+```
 
-1. Dashboard → New → Web Service
-2. Repite el proceso con:
-   - **Name:** ecommerce-catalogo
-   - **Build Command:** `cd catalogo/catalogo && ./mvnw clean package -DskipTests`
-   - **Start Command:** `cd catalogo/catalogo && java -jar target/catalogo-0.0.1-SNAPSHOT.jar`
-3. Mismas variables de entorno + agregar:
-   ```
-   AUTH_SERVICE_URL=https://ecommerce-auth.onrender.com
-   ```
+## 4. Exposición pública y TLS
 
-### Paso 4: Actualizar Frontend
+El frontend necesita saber las URLs públicas de Auth y Catálogo **en tiempo de compilación**. Si cambias de dominio, actualiza `.env` y reconstruye el frontend:
 
-Edita las URLs del backend en tu código frontend para apuntar a:
-- Auth: `https://ecommerce-auth.onrender.com`
-- Catálogo: `https://ecommerce-catalogo.onrender.com`
+```bash
+docker compose build frontend
+docker compose up -d frontend
+```
 
----
+Ejemplo con tres subdominios:
 
-## 🚂 Backend en Railway (Alternativa)
+```env
+CORS_ALLOWED_ORIGINS=https://shop.ejemplo.com
+REACT_APP_AUTH_URL=https://auth.ejemplo.com
+REACT_APP_CATALOGO_URL=https://catalogo.ejemplo.com
+```
 
-Railway también ofrece despliegue gratuito.
+### Caddy (recomendado)
 
-### Configuración Rápida
+`Caddyfile`:
 
-1. Ve a [railway.app](https://railway.app) e inicia sesión con GitHub
-2. New Project → Deploy from GitHub repo
-3. Selecciona ECOMMERCE
-4. Railway detectará automáticamente los servicios
-5. Agrega una base de datos PostgreSQL desde el dashboard
-6. Configura las variables de entorno automáticamente
+```caddyfile
+shop.ejemplo.com {
+    reverse_proxy localhost:3000
+}
 
-**Nota:** Railway tiene un límite de 500 horas/mes en el plan gratuito.
+auth.ejemplo.com {
+    reverse_proxy localhost:9090
+}
 
----
+catalogo.ejemplo.com {
+    reverse_proxy localhost:9092
+}
+```
 
-## 💾 Base de Datos
+Caddy obtiene y renueva los certificados TLS automáticamente.
 
-### Opciones Gratuitas
+### Nginx
 
-1. **Render PostgreSQL** (Recomendado)
-   - 256 MB RAM
-   - 1 GB almacenamiento
-   - Ideal para desarrollo
+```nginx
+server {
+    listen 443 ssl;
+    server_name shop.ejemplo.com;
 
-2. **Neon** (Alternativa)
-   - 10 GB almacenamiento
-   - Serverless PostgreSQL
-   - [neon.tech](https://neon.tech)
+    ssl_certificate     /etc/letsencrypt/live/shop.ejemplo.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/shop.ejemplo.com/privkey.pem;
 
-3. **ElephantSQL**
-   - 20 MB gratis
-   - PostgreSQL como servicio
-   - [elephantsql.com](https://elephantsql.com)
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
 
----
+Repite el patrón para `auth` y `catalogo`. Los certificados pueden emitirse con Certbot.
 
-## 🔐 Seguridad en Producción
+## 5. Red y puertos en producción
 
-Antes de desplegar, asegúrate de:
+Compose publica en el host todos los servicios. En un servidor real solo deben ser accesibles el frontend y el proxy inverso. Edita `docker-compose.yml` y elimina o comenta los `ports` de:
 
-1. ✅ Cambiar `JWT_SECRET` a un valor seguro y único
-2. ✅ Usar contraseñas fuertes para la base de datos
-3. ✅ Habilitar HTTPS (incluido en Render/Netlify)
-4. ✅ Configurar CORS correctamente para tus dominios de producción
-5. ✅ No subir archivos `.env` al repositorio
+- `postgres`
+- `rabbitmq`
+- `auth`
+- `catalogo`
+- `notificaciones`
+- `mailpit`
 
----
+Los servicios se comunican entre sí por la red interna de Compose usando los nombres `postgres`, `rabbitmq`, `auth`, etc. No necesitan puertos publicados.
 
-## 📊 Monitoreo
+Si necesitas administrar RabbitMQ o PostgreSQL de forma remota, publica el puerto solo en loopback:
 
-- **Render:** Incluye logs y métricas básicas
-- **Netlify:** Analytics disponible
-- **Alternativa:** [UptimeRobot](https://uptimerobot.com) para monitorear disponibilidad
+```yaml
+ports:
+  - "127.0.0.1:15672:15672"
+```
 
----
+y accede mediante un túnel SSH. No expongas la consola de RabbitMQ (`guest`/`guest`) ni PostgreSQL a Internet.
 
-## 🆘 Solución de Problemas
+## 6. Correo y SMS en producción
 
-### El frontend no se conecta al backend
-- Verifica que las URLs en el código frontend sean correctas
-- Asegúrate de que CORS esté configurado en el backend
+### Correo
 
-### El backend no inicia
-- Revisa los logs en Render/Railway
-- Verifica las variables de entorno
-- Asegúrate de que la base de datos esté accesible
+Mailpit es solo para desarrollo; captura los correos y los muestra en `http://localhost:8025` sin enviarlos.
 
-### Base de datos no conecta
-- Verifica el formato de la URL de conexión
-- Confirma que el firewall permita conexiones externas
-- Revisa usuario y contraseña
+Para producción, configura un servidor SMTP real en el servicio `notificaciones`:
 
----
+```yaml
+environment:
+  MAIL_HOST: smtp.tu-proveedor.com
+  MAIL_PORT: 587
+  MAIL_USERNAME: usuario
+  MAIL_PASSWORD: contraseña
+  MAIL_SMTP_AUTH: "true"
+  MAIL_STARTTLS: "true"
+  MAIL_FROM: no-reply@tudominio.com
+```
 
-## ✅ Checklist de Despliegue
+Puedes usar cualquier SMTP, incluido un servidor autoalojado (Postal, Mailu, Postfix) o un proveedor transaccional.
 
-- [ ] Base de datos PostgreSQL creada
-- [ ] Variables de entorno configuradas
-- [ ] Servicio Auth desplegado
-- [ ] Servicio Catálogo desplegado
-- [ ] Frontend actualizado con URLs de producción
-- [ ] Frontend desplegado
-- [ ] CORS configurado
-- [ ] Probado registro de usuario
-- [ ] Probado login
-- [ ] Probado creación de productos
-- [ ] Probado carrito y compras
+### SMS
 
----
+- `SMS_PROVIDER=log`: el SMS se escribe en el log. Útil en desarrollo.
+- `SMS_PROVIDER=webhook`: se hace `POST` a `SMS_WEBHOOK_URL` con el token en `Authorization: Bearer <SMS_WEBHOOK_TOKEN>`.
 
-## 📚 Recursos Adicionales
+Contrato esperado por el webhook:
 
-- [Documentación de Render](https://render.com/docs)
-- [Documentación de Netlify](https://docs.netlify.com)
-- [Spring Boot en producción](https://docs.spring.io/spring-boot/docs/current/reference/html/deployment.html)
+```json
+{
+  "numeroTelefono": "+573001234567",
+  "mensaje": "Tu compra #12 ha sido confirmada."
+}
+```
 
----
+Cualquier gateway HTTP (Jasmin, Kannel, un gateway Android) que acepte este contrato sirve como reemplazo de Twilio.
 
-**¡Feliz despliegue! 🎉**
+## 7. Persistencia y copias de seguridad
+
+Los datos viven en los volúmenes `postgres_data` y `rabbitmq_data`.
+
+Copia de PostgreSQL:
+
+```bash
+docker compose exec -T postgres pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB" \
+  > backup-$(date +%Y%m%d-%H%M).sql
+```
+
+Restauración:
+
+```bash
+docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
+  < backup-20261112-1200.sql
+```
+
+Programa la copia con `cron` y guárdala fuera del servidor. RabbitMQ es un sistema de mensajería: no es la fuente de verdad; la compra ya está en PostgreSQL.
+
+Eliminar todos los datos:
+
+```bash
+docker compose down --volumes
+```
+
+## 8. Actualizaciones
+
+```bash
+git pull
+docker compose build
+docker compose up -d
+docker compose ps
+```
+
+Compose recrea solo los contenedores cuya imagen o configuración cambió. Los volúmenes se conservan.
+
+Para cambios de esquema, `JPA_DDL_AUTO=update` permite que Hibernate agregue columnas, pero no elimina ni renombra datos de forma segura. Antes de adoptar `validate` en producción, añade migraciones con Flyway o Liquibase.
+
+## 9. Escalabilidad
+
+- Auth, Catálogo y Notificaciones son stateless (salvo la sesión JWT, que vive en el navegador), por lo que pueden replicarse detrás de un balanceador.
+- Todos los servicios deben compartir el mismo `JWT_SECRET`.
+- Catálogo necesita `AUTH_SERVICE_URL` apuntando al balanceador de Auth.
+- RabbitMQ distribuye los mensajes entre varios consumidores de `notificaciones.queue`.
+- PostgreSQL es el límite principal; para crecer, usa un servidor gestionado, réplicas de lectura o separa las bases por servicio.
+- El frontend es estático y puede servirse desde cualquier CDN.
+
+## 10. Operación
+
+| Tarea | Comando |
+| --- | --- |
+| Estado | `docker compose ps` |
+| Logs | `docker compose logs -f [servicio]` |
+| Healthcheck | `curl http://localhost:<puerto>/actuator/health` |
+| Reiniciar un servicio | `docker compose restart auth` |
+| Reconstruir un servicio | `docker compose up -d --build auth` |
+| Detener sin borrar datos | `docker compose down` |
+| Detener y borrar datos | `docker compose down --volumes` |
+
+## 11. Checklist de producción
+
+- [ ] `.env` fuera de Git y con permisos restringidos (`chmod 600 .env`).
+- [ ] `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD` y `JWT_SECRET` aleatorios y distintos de los de ejemplo.
+- [ ] `JWT_SECRET` de al menos 32 caracteres e idéntico en Auth y Catálogo.
+- [ ] `CORS_ALLOWED_ORIGINS` limitado al dominio real del frontend.
+- [ ] `REACT_APP_AUTH_URL` y `REACT_APP_CATALOGO_URL` con HTTPS y reconstrucción del frontend.
+- [ ] PostgreSQL y RabbitMQ sin puertos públicos.
+- [ ] Mailpit deshabilitado o no expuesto; SMTP real configurado.
+- [ ] Copias de seguridad programadas y probadas.
+- [ ] TLS activo y renovación automática.
+- [ ] Credenciales antiguas de AWS/Twilio rotadas y eliminadas del historial de Git (ver abajo).
+
+## 12. Credenciales históricas
+
+Versiones anteriores de este repositorio público incluyeron credenciales de AWS y Twilio en el historial de Git. Aunque el `HEAD` actual ya no las contiene:
+
+1. **Rótalas o revócalas** en AWS IAM y Twilio. Considera cualquier clave publicada como comprometida.
+2. Purga el historial antes de hacer público el repositorio:
+
+```bash
+# Opción A: git filter-repo (recomendado)
+git filter-repo --replace-text replacements.txt
+git push --force --all
+git push --force --tags
+
+# Opción B: BFG Repo-Cleaner
+java -jar bfg.jar --replace-text replacements.txt
+git reflog expire --expire=now --all
+git gc --prune=now --aggressive
+git push --force
+```
+
+`replacements.txt` contiene los secretos a reemplazar, uno por línea:
+
+```text
+AKIA...==>REDACTED
+D4de...==>REDACTED
+ACe3...==>REDACTED
+ba4b...==>REDACTED
+```
+
+Tras el `force-push`, avisa a cualquier colaborador de que debe volver a clonar o hacer `git fetch --all && git reset --hard origin/main`.
+
+## 13. Solución de problemas
+
+| Síntoma | Causa probable | Solución |
+| --- | --- | --- |
+| `JWT_SECRET` requerido | Falta en `.env` | Definir la variable y recrear los contenedores |
+| Frontend llama a `localhost` en producción | URLs compiladas con el valor por defecto | Actualizar `.env` y `docker compose build frontend` |
+| `401` en todas las llamadas | Secretos JWT distintos entre Auth y Catálogo | Usar el mismo `JWT_SECRET` y reiniciar ambos |
+| `403` al crear productos | El usuario no es `ADMIN` o el token es anterior al cambio de rol | Actualizar el rol en PostgreSQL y volver a iniciar sesión |
+| Error de CORS | Origen no incluido en `CORS_ALLOWED_ORIGINS` | Añadir el origen exacto (esquema + dominio + puerto) |
+| RabbitMQ rechaza la conexión | Se está usando `guest` desde otro contenedor | Usar `RABBITMQ_USER`/`RABBITMQ_PASSWORD` no `guest` |
+| No llegan correos | Mailpit no está corriendo o el SMTP está mal configurado | Revisar `docker compose logs notificaciones` y `http://localhost:8025` |
+| Healthcheck en `starting` | El servicio aún compila/arranca | Esperar y revisar `docker compose logs` |
+| PostgreSQL no arranca | Contraseña o volumen incompatible | Revisar logs; en desarrollo se puede usar `down --volumes` (borra datos) |

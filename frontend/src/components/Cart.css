@@ -382,6 +382,24 @@
   cursor: not-allowed;
 }
 
+.cart-error {
+  text-align: center;
+  padding: 100px 20px;
+  color: #d4af37;
+  position: relative;
+  z-index: 1;
+}
+
+.cart-error p {
+  margin-bottom: 1.5rem;
+  font-size: 18px;
+}
+
+.cart-error .btn-checkout {
+  max-width: 280px;
+  margin: 0 auto;
+}
+
 .loading {
   text-align: center;
   padding: 100px 20px;

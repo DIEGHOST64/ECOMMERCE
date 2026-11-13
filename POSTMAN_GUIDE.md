@@ -1,50 +1,79 @@
-# 📘 Guía de Uso de Postman Collection
+# Guía de Postman
 
-## 🚀 Importar la Colección
+La colección `POSTMAN_COLLECTION.json` usa autenticación Bearer a nivel de colección. Al hacer login, el token y el id del usuario se guardan automáticamente en variables.
 
-1. Abre Postman
-2. Click en **Import**
-3. Selecciona el archivo `POSTMAN_COLLECTION.json`
-4. La colección "E-Commerce Microservices API" estará lista para usar
+## 1. Importar
 
-## 🔧 Configurar Variables
+1. Abre Postman.
+2. **Import** → selecciona `POSTMAN_COLLECTION.json`.
+3. La colección **E-Commerce API** aparecerá con las carpetas Auth, Productos, Carrito, Compras y Health.
 
-La colección incluye variables predefinidas:
+## 2. Variables
 
-- `auth_url`: http://localhost:9090
-- `catalogo_url`: http://localhost:9092
-- `token`: (se llena automáticamente al hacer login)
-- `usuarioId`: 1 (se actualiza automáticamente al hacer login)
+| Variable | Valor inicial | Se actualiza |
+| --- | --- | --- |
+| `auth_url` | `http://localhost:9090` | Manual |
+| `catalogo_url` | `http://localhost:9092` | Manual |
+| `token` | vacío | Al ejecutar Login |
+| `usuarioId` | `1` | Al ejecutar Login |
+| `productoId` | `1` | Manual |
+| `compraId` | `1` | Manual |
 
-## 📝 Flujo de Prueba Recomendado
+El script de Login hace:
 
-### 1️⃣ Crear Usuario
-**Endpoint:** `Auth Service > Registrar Usuario`
+```javascript
+const data = pm.response.json();
+pm.collectionVariables.set('token', data.token);
+pm.collectionVariables.set('usuarioId', data.id);
+```
+
+No existe `X-User-Role`: el rol viaja dentro del JWT firmado.
+
+## 3. Flujo recomendado
+
+### Paso 1: Registrar usuario
+
+Carpeta **Auth** → **Registrar usuario**.
 
 ```json
 {
-  "username": "testuser",
-  "password": "password123",
-  "email": "test@example.com",
-  "nombre": "Usuario Test",
-  "telefono": "+1234567890"
+  "nombre": "Ana Pérez",
+  "email": "ana@ejemplo.com",
+  "password": "secreto123",
+  "telefono": "+573001234567",
+  "edad": 28
 }
 ```
 
-### 2️⃣ Iniciar Sesión
-**Endpoint:** `Auth Service > Login`
+Respuesta esperada: `201 Created` con `role: "USER"`.
+
+### Paso 2: Iniciar sesión
+
+Carpeta **Auth** → **Login**.
 
 ```json
 {
-  "username": "testuser",
-  "password": "password123"
+  "email": "ana@ejemplo.com",
+  "password": "secreto123"
 }
 ```
 
-✨ El token y el usuarioId se guardan automáticamente en las variables de la colección.
+Al recibir `200`, el script guarda `token` y `usuarioId`. Todas las peticiones heredan el Bearer automáticamente.
 
-### 3️⃣ Crear Productos
-**Endpoint:** `Productos > Crear Producto`
+### Paso 3: Crear un administrador (solo la primera vez)
+
+El registro no permite elegir rol. Promueve el usuario en PostgreSQL:
+
+```bash
+docker compose exec postgres psql -U postgres -d ecommerce \
+  -c "UPDATE usuario SET role = 'ADMIN' WHERE email = 'ana@ejemplo.com';"
+```
+
+Vuelve a ejecutar **Login** para obtener un token con `role: "ADMIN"`. Sin este paso, crear/editar/eliminar productos devolverá `403`.
+
+### Paso 4: Crear productos
+
+Carpeta **Productos** → **Crear producto** (requiere token ADMIN).
 
 ```json
 {
@@ -52,19 +81,19 @@ La colección incluye variables predefinidas:
   "descripcion": "Laptop de alto rendimiento",
   "precio": 1299.99,
   "stock": 10,
-  "imagenUrl": "https://example.com/laptop.jpg"
+  "imagenUrl": "https://ejemplo.com/laptop.jpg"
 }
 ```
 
-Repite este paso para crear varios productos.
+Guarda el `id` devuelto en la variable `productoId` o ajusta la URL de los siguientes pasos.
 
-### 4️⃣ Listar Productos
-**Endpoint:** `Productos > Listar Todos los Productos`
+### Paso 5: Consultar productos (público)
 
-Verás todos los productos creados.
+Carpeta **Productos** → **Listar productos**. No requiere token.
 
-### 5️⃣ Agregar al Carrito
-**Endpoint:** `Carrito > Agregar Producto al Carrito`
+### Paso 6: Agregar al carrito
+
+Carpeta **Carrito** → **Agregar producto**.
 
 ```json
 {
@@ -73,114 +102,91 @@ Verás todos los productos creados.
 }
 ```
 
-### 6️⃣ Ver Carrito
-**Endpoint:** `Carrito > Ver Carrito`
+La cantidad debe estar entre 1 y 10. El carrito no reserva stock.
 
-Verás el contenido de tu carrito con el total calculado.
+### Paso 7: Ver y modificar el carrito
 
-### 7️⃣ Actualizar Cantidad
-**Endpoint:** `Carrito > Actualizar Cantidad`
+- **Ver carrito**: `GET /api/ecommerce/carrito`.
+- **Actualizar cantidad**: `PUT /api/ecommerce/carrito/actualizar/1?cantidad=3`.
+- **Eliminar producto**: `DELETE /api/ecommerce/carrito/eliminar/1`.
+- **Vaciar carrito**: `DELETE /api/ecommerce/carrito/vaciar` (204).
 
-Modifica la cantidad de un producto en el carrito.
+### Paso 8: Realizar compra
 
-### 8️⃣ Realizar Compra
-**Endpoint:** `Compras > Realizar Compra`
+Carpeta **Compras** → **Realizar compra**.
 
-Convierte el carrito en una compra confirmada.
+`POST /api/ecommerce/compras/realizar` sin cuerpo. El backend:
 
-### 9️⃣ Ver Historial de Compras
-**Endpoint:** `Compras > Obtener Compras por Usuario`
+1. Descuenta el stock de forma atómica.
+2. Guarda la compra.
+3. Vacía el carrito.
+4. Publica la notificación en RabbitMQ.
 
-Consulta todas tus compras realizadas.
+Respuesta `201 Created` con la compra y estado `COMPLETADA`.
 
-## 📋 Endpoints Disponibles
+### Paso 9: Ver compras
 
-### 🔐 Auth Service (Puerto 9090)
+- **Compras del usuario**: `GET /api/ecommerce/compras/usuario/{{usuarioId}}`.
+- **Compra por ID**: `GET /api/ecommerce/compras/{{compraId}}`.
+- **Todas las compras** (ADMIN): `GET /api/ecommerce/compras`.
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/ecommerce/usuario/save` | Registrar usuario |
-| POST | `/api/ecommerce/usuario/login` | Iniciar sesión |
-| GET | `/api/ecommerce/usuario/{id}` | Obtener usuario |
-| GET | `/api/ecommerce/usuario/{id}/existe` | Verificar existencia |
-| PUT | `/api/ecommerce/usuario/update` | Actualizar usuario |
-| DELETE | `/api/ecommerce/usuario/{id}` | Eliminar usuario |
+### Paso 10: Ver el correo y el SMS
 
-### 🛍️ Productos (Puerto 9092)
+- Correo: abre Mailpit en http://localhost:8025.
+- SMS: si `SMS_PROVIDER=log`, revisa `docker compose logs -f notificaciones`.
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/api/ecommerce/producto` | Listar productos |
-| GET | `/api/ecommerce/producto/{id}` | Obtener producto |
-| POST | `/api/ecommerce/producto` | Crear producto |
-| PUT | `/api/ecommerce/producto/{id}` | Actualizar producto |
-| DELETE | `/api/ecommerce/producto/{id}` | Eliminar producto |
+## 4. Healthchecks
 
-### 🛒 Carrito (Puerto 9092)
+Carpeta **Health**:
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| GET | `/api/ecommerce/carrito?usuarioId={id}` | Ver carrito |
-| POST | `/api/ecommerce/carrito/agregar?usuarioId={id}` | Agregar producto |
-| PUT | `/api/ecommerce/carrito/actualizar/{productoId}?usuarioId={id}&cantidad={n}` | Actualizar cantidad |
-| DELETE | `/api/ecommerce/carrito/eliminar/{productoId}?usuarioId={id}` | Eliminar producto |
-| DELETE | `/api/ecommerce/carrito/vaciar?usuarioId={id}` | Vaciar carrito |
+- `GET {{auth_url}}/actuator/health`
+- `GET {{catalogo_url}}/actuator/health`
+- `GET http://localhost:9093/actuator/health`
 
-### 💳 Compras (Puerto 9092)
+Todos deben devolver `{"status":"UP"}`.
 
-| Método | Endpoint | Descripción |
-|--------|----------|-------------|
-| POST | `/api/ecommerce/compras/realizar?usuarioId={id}` | Realizar compra |
-| GET | `/api/ecommerce/compras/usuario/{usuarioId}` | Compras por usuario |
-| GET | `/api/ecommerce/compras/{compraId}` | Obtener compra |
-| GET | `/api/ecommerce/compras` | Todas las compras (Admin) |
-
-## ⚠️ Códigos de Respuesta
+## 5. Códigos de respuesta
 
 | Código | Significado |
-|--------|-------------|
+| --- | --- |
 | 200 | Operación exitosa |
 | 201 | Recurso creado |
-| 400 | Petición incorrecta |
+| 204 | Sin contenido |
+| 400 | Datos inválidos o validación |
+| 401 | Token ausente, inválido o expirado |
+| 403 | Sin permisos (por ejemplo, crear producto sin ADMIN) |
 | 404 | Recurso no encontrado |
-| 409 | Conflicto (ej: usuario ya existe) |
-| 500 | Error interno del servidor |
+| 409 | Conflicto (stock insuficiente, email duplicado) |
+| 503 | Auth no disponible desde Catálogo |
 
-## 💡 Tips
+## 6. Problemas comunes
 
-1. **Orden de prueba**: Siempre ejecuta Login primero para obtener el token
-2. **Variables automáticas**: El token y usuarioId se actualizan solos tras el login
-3. **IDs dinámicos**: Ajusta los IDs de productos/carritos según tus datos
-4. **Errores comunes**: 
-   - Si obtienes 404, verifica que el microservicio esté corriendo
-   - Si obtienes 400, revisa el formato del JSON
+### `401 No autenticado`
 
-## 🐛 Solución de Problemas
+- Ejecuta primero **Login**.
+- Verifica que la colección tenga seleccionada la autenticación **Bearer Token** con `{{token}}`.
+- Si el token expiró, vuelve a hacer login.
 
-### Error de conexión
+### `403 Acceso denegado` al crear productos
+
+El usuario no es `ADMIN`. Actualízalo en PostgreSQL y vuelve a iniciar sesión para obtener un token nuevo.
+
+### `409 Stock insuficiente`
+
+El stock cambió entre el carrito y el checkout. Consulta el producto y ajusta la cantidad.
+
+### `ECONNREFUSED`
+
+Los servicios no están corriendo. Verifica:
+
+```bash
+docker compose ps
+curl http://localhost:9090/actuator/health
+curl http://localhost:9092/actuator/health
 ```
-Error: connect ECONNREFUSED
-```
-**Solución:** Verifica que los servicios estén corriendo en los puertos correctos:
-- Auth: http://localhost:9090
-- Catálogo: http://localhost:9092
 
-### Usuario no encontrado
-```
-{
-  "error": "Usuario no encontrado con ID: 1"
-}
-```
-**Solución:** Asegúrate de haber creado un usuario primero y de usar el ID correcto.
+### No se guarda el token
 
-### Stock insuficiente
-```
-{
-  "error": "No hay stock suficiente para el producto ID: 1"
-}
-```
-**Solución:** Verifica que el producto tenga stock disponible antes de agregarlo al carrito.
+Abre la pestaña **Tests** del request de Login y revisa que el script no tenga errores. El script espera un `200` y un campo `token` en la respuesta.
 
----
-
-**¡Disfruta probando la API! 🎉**
+Para el detalle de cada endpoint consulta [API.md](./API.md).

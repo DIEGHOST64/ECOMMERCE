@@ -1,29 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useCallback, useEffect, useState } from 'react';
 import './Orders.css';
+import { catalogoApi } from '../api/catalogoApi';
 
 function Orders({ user }) {
   const [compras, setCompras] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-  useEffect(() => {
-    fetchCompras();
-  }, []);
-
-  const fetchCompras = async () => {
+  const fetchCompras = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get(
-        `http://localhost:9092/api/ecommerce/compras/usuario/${user.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setCompras(response.data);
+      const data = await catalogoApi.compras.listarPorUsuario(user.id);
+      setCompras(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error('Error al cargar compras');
+      setError(err.message || 'Error al cargar las compras');
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.id]);
+
+  useEffect(() => {
+    fetchCompras();
+  }, [fetchCompras]);
 
   if (loading) {
     return (
@@ -34,10 +33,21 @@ function Orders({ user }) {
     );
   }
 
+  if (error) {
+    return (
+      <div className="orders-error">
+        <p>{error}</p>
+        <button type="button" className="btn-retry-orders" onClick={fetchCompras}>
+          Reintentar
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="orders-container">
       <h1 className="page-title">Mis Compras</h1>
-      
+
       {compras.length === 0 ? (
         <div className="empty-orders">
           <span className="empty-icon">📦</span>
@@ -57,23 +67,36 @@ function Orders({ user }) {
                       month: 'long',
                       day: 'numeric',
                       hour: '2-digit',
-                      minute: '2-digit'
+                      minute: '2-digit',
                     })}
                   </p>
+                  {compra.estado && (
+                    <span className="order-status">{compra.estado}</span>
+                  )}
                 </div>
                 <div className="order-total">
                   <span className="total-label">Total</span>
-                  <span className="total-amount">{compra.total.toLocaleString('es-CO')} COP</span>
+                  <span className="total-amount">
+                    {Number(compra.total).toLocaleString('es-CO')} COP
+                  </span>
                 </div>
               </div>
-              
+
               <div className="order-items">
                 <h4>Productos</h4>
-                {compra.items && compra.items.map((item, index) => (
-                  <div key={index} className="order-item">
+                {(compra.items || []).map((item, index) => (
+                  <div
+                    key={item.id || `${compra.id}-${index}`}
+                    className="order-item"
+                  >
                     <span className="item-name">{item.nombreProducto}</span>
                     <span className="item-quantity">x{item.cantidad}</span>
-                    <span className="item-price">{(item.precioUnitario * item.cantidad).toLocaleString('es-CO')} COP</span>
+                    <span className="item-price">
+                      {(
+                        Number(item.precioUnitario) * item.cantidad
+                      ).toLocaleString('es-CO')}{' '}
+                      COP
+                    </span>
                   </div>
                 ))}
               </div>

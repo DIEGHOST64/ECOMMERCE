@@ -1,125 +1,112 @@
-# E-Commerce Frontend
+# Frontend
 
-Frontend moderno y elegante para el sistema de e-commerce desarrollado con React.
+Aplicación React 18 de la plataforma E-Commerce. Consume Auth (9090) y Catálogo (9092) con JWT.
 
-## 🎨 Características
+## Requisitos
 
-- ✨ Diseño moderno con gradientes y animaciones
-- 🔐 Sistema de autenticación (Login/Registro)
-- 📦 Catálogo de productos con diseño atractivo
-- 🛒 Carrito de compras funcional
-- 📱 Diseño responsive (móvil y desktop)
-- 🎯 Navegación intuitiva
+- Node.js 20 y npm.
+- Auth y Catálogo en ejecución (ver [README.md](../README.md) o [INSTALL.md](../INSTALL.md)).
 
-## 📋 Prerrequisitos
+## Instalación
 
-Antes de comenzar, asegúrate de tener instalado:
-
-1. **Node.js** (v14 o superior)
-   - Descarga desde: https://nodejs.org/
-   - Verifica la instalación: `node --version`
-
-2. **Microservicios Backend** corriendo en:
-   - Auth: http://localhost:9090
-   - Catalogo: http://localhost:9092
-   - Notificaciones: http://localhost:9093
-
-## 🚀 Instalación
-
-1. Abre una terminal en la carpeta `frontend`:
-```cmd
-cd "c:\Users\PC\Documents\Proyecto ECCOMERCE\Proyecto ECCOMERCE\Proyecto ECCOMERCE\frontend"
-```
-
-2. Instala las dependencias:
-```cmd
-npm install
-```
-
-## ▶️ Ejecutar el Frontend
-
-```cmd
+```bash
+cd frontend
+npm ci
 npm start
 ```
 
-El frontend se abrirá automáticamente en: **http://localhost:3000**
+Abre http://localhost:3000.
 
-## 📁 Estructura del Proyecto
+## Configuración
 
+Las URLs se leen de variables de entorno en tiempo de compilación:
+
+```env
+REACT_APP_AUTH_URL=http://localhost:9090
+REACT_APP_CATALOGO_URL=http://localhost:9092
+REACT_APP_REQUEST_TIMEOUT_MS=15000
 ```
+
+Puedes definirlas en `frontend/.env.local` (ignorado por Git) o en el entorno antes de `npm start`/`npm run build`.
+
+En Docker, las URLs se pasan como build args desde el `.env` raíz. Si cambias una URL, reconstruye el frontend:
+
+```bash
+docker compose build frontend
+docker compose up -d frontend
+```
+
+## Estructura
+
+```text
 frontend/
-├── public/
-│   └── index.html
 ├── src/
+│   ├── api/
+│   │   ├── client.js       Cliente fetch, JWT, timeout y errores
+│   │   ├── authApi.js      Login, registro y perfil
+│   │   └── catalogoApi.js  Productos, carrito y compras
 │   ├── components/
-│   │   ├── Navbar.js/css       # Barra de navegación
-│   │   ├── Login.js            # Página de inicio de sesión
-│   │   ├── Register.js         # Página de registro
-│   │   ├── ProductList.js/css  # Listado de productos
-│   │   ├── Cart.js/css         # Carrito de compras
-│   │   └── Auth.css            # Estilos de autenticación
-│   ├── App.js                  # Componente principal
-│   ├── App.css                 # Estilos globales de la app
-│   ├── index.js                # Punto de entrada
-│   └── index.css               # Estilos base
+│   │   ├── Login.js
+│   │   ├── Register.js
+│   │   ├── ProductList.js
+│   │   ├── Cart.js
+│   │   ├── Orders.js
+│   │   ├── AdminPanel.js
+│   │   └── Navbar.js
+│   ├── session.js          Sesión JWT en localStorage
+│   ├── config.js           URLs y timeout
+│   ├── App.js              Rutas públicas y protegidas
+│   └── index.js
+├── nginx.conf              Servido estático en Docker
+├── Dockerfile
 └── package.json
 ```
 
-## 🎯 Funcionalidades
+## Sesión y roles
 
-### Autenticación
-- **Registro**: Crear nueva cuenta de usuario
-- **Login**: Iniciar sesión con email y contraseña
-- **Logout**: Cerrar sesión
+- La sesión se guarda en `localStorage` bajo `ecommerce.session`.
+- Contiene `token`, `tokenType`, `expiresAt` y `user` (`id`, `nombre`, `email`, `role`).
+- `session.js` normaliza `ADMIN`/`ROLE_ADMIN` a `ADMIN` y cualquier otro rol a `USER`.
+- Si el token expiró, la sesión se elimina al leerla.
+- Si el backend responde `401` con un token enviado, se limpia la sesión y se emite `session:expired`; `App` redirige al login.
+- No se envían `X-User-Role` ni `usuarioId`; el backend deriva la identidad del JWT.
 
-### Productos
-- Ver catálogo completo de productos
-- Información detallada (nombre, precio, stock)
-- Agregar productos al carrito
+## Rutas
 
-### Carrito
-- Ver productos en el carrito
-- Eliminar productos del carrito
-- Ver total de la compra
-- Realizar compra
+| Ruta | Acceso |
+| --- | --- |
+| `/login`, `/register` | Público (redirige si ya hay sesión) |
+| `/productos` | Usuario autenticado |
+| `/carrito` | Usuario autenticado |
+| `/compras` | Usuario autenticado |
+| `/admin` | Solo `ADMIN` |
+| `/` | Redirige según el rol |
 
-## 🎨 Tecnologías Utilizadas
+## Pruebas y build
 
-- **React 18** - Framework de UI
-- **React Router DOM** - Navegación
-- **Axios** - Peticiones HTTP
-- **CSS3** - Estilos con gradientes y animaciones
-
-## 🔧 Configuración
-
-El frontend está configurado para conectarse a los microservicios en:
-- Auth API: `http://localhost:9090`
-- Catalog API: `http://localhost:9092`
-
-Si necesitas cambiar estos endpoints, modifica las URLs en los componentes correspondientes.
-
-## 📝 Notas
-
-- El token de autenticación se guarda en `localStorage`
-- El contador del carrito se actualiza automáticamente
-- Las rutas están protegidas (requieren autenticación)
-
-## 🐛 Solución de Problemas
-
-### Error: "Cannot connect to backend"
-- Verifica que los microservicios estén corriendo
-- Revisa que los puertos 9090 y 9092 estén disponibles
-
-### Error: "npm not found"
-- Instala Node.js desde https://nodejs.org/
-- Reinicia la terminal después de la instalación
-
-### Error en dependencias
-```cmd
-rm -rf node_modules package-lock.json
-npm install
+```bash
+npm test -- --watchAll=false
+npm run build
 ```
 
-## 🎉 ¡Listo!
+Resultado esperado: 12 tests y build sin warnings.
 
-Tu frontend está configurado y listo para usar. Disfruta de tu e-commerce!
+## Solución de problemas
+
+### El navegador no conecta con el backend
+
+- Verifica que Auth y Catálogo estén arriba y que `CORS_ALLOWED_ORIGINS` incluya `http://localhost:3000`.
+- Revisa la consola del navegador y la pestaña Network.
+
+### `401` inmediato
+
+- El token expiró o `JWT_SECRET` no coincide entre Auth y Catálogo.
+- Vuelve a iniciar sesión después de corregir la configuración.
+
+### `403` en el panel de administración
+
+El usuario no tiene rol `ADMIN`. Promuévelo en PostgreSQL y vuelve a iniciar sesión.
+
+### El frontend usa URLs equivocadas
+
+Las variables `REACT_APP_*` se compilan en el bundle. Reinicia el servidor de desarrollo o reconstruye la imagen después de cambiarlas.
