@@ -60,7 +60,7 @@ Refactorización completa para eliminar AWS y Twilio, aplicar Clean Architecture
 
 ### Seguridad
 
-- **Acción obligatoria:** las versiones anteriores del repositorio público contenían una clave de AWS IAM y un token de Twilio en el historial de Git. Rótalos o revócalos; considera esas credenciales comprometidas.
+- **Acción obligatoria:** las versiones anteriores del repositorio público contenían una clave de AWS IAM y un token de Twilio. El historial público fue purgado el 2026-11-12 y el repositorio anterior quedó archivado como `ECOMMERCE-archive` (privado). Rota o revoca esas credenciales igualmente; la purga no las invalida.
 - Los secretos ya no se versionan. `.env` está ignorado y los `.env.example` solo tienen marcadores.
 - `JWT_SECRET` debe tener al menos 32 caracteres y ser idéntico en Auth y Catálogo.
 - RabbitMQ usa un usuario distinto de `guest`.
@@ -81,7 +81,7 @@ Refactorización completa para eliminar AWS y Twilio, aplicar Clean Architecture
 2. Crea un `.env` desde `.env.example` y define `POSTGRES_PASSWORD`, `RABBITMQ_PASSWORD` y `JWT_SECRET`.
 3. Ejecuta `docker compose up -d --build`.
 4. Actualiza el rol del primer administrador en PostgreSQL y vuelve a iniciar sesión.
-5. Purga el historial de Git con `git filter-repo` o BFG antes de publicar.
+5. El historial público ya fue purgado. Si clonaste antes de la purga, vuelve a clonar el repositorio.
 6. Reemplaza cualquier integración externa que esperara `X-User-Role` o `usuarioId` por el JWT.
 7. Configura un SMTP real y un gateway SMS si vas a producción.
 

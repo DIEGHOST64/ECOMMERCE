@@ -192,7 +192,7 @@ En Windows usa `mvnw.cmd` y `npm.cmd`. El workflow de GitHub Actions (`.github/w
 - El stock se descuenta de forma atómica solo al confirmar la compra; el carrito no reserva inventario.
 - Los secretos viven en `.env`, que está ignorado por Git.
 
-> **Importante:** versiones anteriores de este repositorio público incluyeron credenciales de AWS y Twilio en el historial de Git. Si clonaste o usaste esas versiones, considera esas credenciales comprometidas: rótalas o revócalas. Eliminar los secretos del `HEAD` no los borra del historial; para eso usa `git filter-repo` o BFG y luego fuerza el push.
+> **Importante:** versiones anteriores de este repositorio público incluyeron credenciales de AWS y Twilio. El historial público fue purgado el 2026-11-12 y el repositorio anterior quedó archivado como `ECOMMERCE-archive` (privado). Aun así, considera esas credenciales comprometidas y rótalas o revócalas: la purga no las invalida. Si clonaste antes de la purga, vuelve a clonar el repositorio.
 
 ## Licencia
 

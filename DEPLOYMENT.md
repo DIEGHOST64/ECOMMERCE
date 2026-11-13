@@ -279,10 +279,14 @@ Para cambios de esquema, `JPA_DDL_AUTO=update` permite que Hibernate agregue col
 
 ## 12. Credenciales históricas
 
-Versiones anteriores de este repositorio público incluyeron credenciales de AWS y Twilio en el historial de Git. Aunque el `HEAD` actual ya no las contiene:
+El historial público fue purgado el 2026-11-12 con `git filter-repo`. El repositorio anterior quedó archivado como `ECOMMERCE-archive` (privado) y debe eliminarse cuando ya no se necesite.
 
-1. **Rótalas o revócalas** en AWS IAM y Twilio. Considera cualquier clave publicada como comprometida.
-2. Purga el historial antes de hacer público el repositorio:
+Aun así, las credenciales antiguas estuvieron expuestas y deben rotarse o revocarse en AWS IAM y Twilio. La purga elimina los valores del historial, pero no invalida las claves.
+
+Si vuelve a ocurrir una exposición:
+
+1. **Rota o revoca** las credenciales afectadas. Considera cualquier clave publicada como comprometida.
+2. Purga el historial:
 
 ```bash
 # Opción A: git filter-repo (recomendado)
@@ -297,14 +301,16 @@ git gc --prune=now --aggressive
 git push --force
 ```
 
-`replacements.txt` contiene los secretos a reemplazar, uno por línea:
+`replacements.txt` contiene los secretos exactos a reemplazar, uno por línea:
 
 ```text
-AKIA...==>REDACTED
-D4de...==>REDACTED
-ACe3...==>REDACTED
-ba4b...==>REDACTED
+<AWS_ACCESS_KEY_ID>==>REDACTED
+<AWS_SECRET_ACCESS_KEY>==>REDACTED
+<TWILIO_ACCOUNT_SID>==>REDACTED
+<TWILIO_AUTH_TOKEN>==>REDACTED
 ```
+
+No subas `replacements.txt` al repositorio.
 
 Tras el `force-push`, avisa a cualquier colaborador de que debe volver a clonar o hacer `git fetch --all && git reset --hard origin/main`.
 

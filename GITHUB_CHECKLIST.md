@@ -1,9 +1,9 @@
 # Checklist antes de publicar en GitHub
 
 Repositorio: `https://github.com/DIEGHOST64/ECOMMERCE`
-Rama de trabajo: `refactor/open-source-clean-architecture`
+Rama de trabajo: `main`
 
-> **Advertencia de seguridad:** el historial público anterior contiene una clave de AWS IAM y un token de Twilio. El `HEAD` actual ya no los incluye, pero siguen en commits antiguos. Rótalos o revócalos y purga el historial antes de considerar el repositorio limpio.
+> **Estado de seguridad:** el historial público fue purgado el 2026-11-12. El repositorio anterior quedó archivado como `ECOMMERCE-archive` (privado) y debe eliminarse. Las credenciales de AWS/Twilio que estuvieron expuestas deben rotarse o revocarse igualmente.
 
 ## 1. Archivos sensibles
 
@@ -75,7 +75,7 @@ Revisa especialmente:
 git add -A
 git commit -m "refactor: migrar a stack open source y Clean Architecture"
 
-git push -u origin refactor/open-source-clean-architecture
+git push -u origin main
 ```
 
 Si el push falla por autenticación:
@@ -91,11 +91,11 @@ git config --global credential.helper manager
 
 3. Repite el push.
 
-No publiques la rama `main` hasta que el PR esté revisado y la CI en verde.
+`main` ya está publicada. Para cambios futuros, usa una rama y un PR; no hagas push directo a `main` hasta que la CI esté en verde.
 
 ## 7. Historial de Git
 
-Si el repositorio va a seguir público, purga los secretos del historial. **Rota las credenciales primero**; el purge no las invalida.
+El historial público ya fue purgado. Si vuelve a ocurrir una exposición, **rota las credenciales primero** y luego reescribe el historial; el purge no invalida las claves.
 
 ```bash
 # git filter-repo
